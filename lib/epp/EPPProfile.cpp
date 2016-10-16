@@ -187,13 +187,10 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         if (Exists) {
             auto *Split = interpose(SRC(E), TGT(E));
             if (Log) {
-                DEBUG(errs() << "Val1 : " << Val1.toString(10, true) << "\n");
-                DEBUG(errs() << "Val2 : " << Val2.toString(10, true) << "\n");
                 InsertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal);
                 InsertLogPath(Split);
                 InsertInc(Split->getTerminator(), Val2);
             } else {
-                DEBUG(errs() << "Val1 : " << Val1.toString(10, true) << "\n");
                 InsertInc(&*Split->getFirstInsertionPt(), Val1);
             }
         }

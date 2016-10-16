@@ -19,7 +19,6 @@ using namespace std;
 namespace epp {
 
 #define SRC(E) (E.first)
-
 #define TGT(E) (E.second)
 
 typedef pair<BasicBlock *, BasicBlock *> Edge;
@@ -89,5 +88,6 @@ class CFGInstHelper : public altcfg {
         return make_tuple(true, getInc(E), false, APInt(128, 0, true));
     }
 };
+
 }
 #endif
