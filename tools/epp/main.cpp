@@ -13,6 +13,7 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
@@ -43,7 +44,7 @@
 #include <memory>
 #include <string>
 
-#include "AllInliner.h"
+//#include "AllInliner.h"
 #include "Common.h"
 #include "EPPDecode.h"
 #include "EPPProfile.h"
@@ -84,8 +85,6 @@ cl::list<string> libraries("l", cl::Prefix,
                            cl::desc("Specify libraries to link to"),
                            cl::value_desc("library prefix"));
 
-// cl::list<string>
-// linkM("b", cl::desc("Bitcode modules to merge (comma separated list)"));
 
 cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
                                    cl::desc("List of functions to instrument"),
@@ -114,7 +113,7 @@ static void instrumentModule(Module &module, std::string outFile,
     pm.add(llvm::createBasicAAWrapperPass());
     pm.add(createTypeBasedAAWrapperPass());
     pm.add(new llvm::CallGraphWrapperPass());
-    pm.add(new epp::PeruseInliner());
+    //pm.add(new epp::PeruseInliner());
     //pm.add(new pasha::Simplify(FunctionList[0]));
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::Namer());
@@ -159,7 +158,7 @@ static void interpretResults(Module &module, std::string filename) {
     pm.add(createBasicAAWrapperPass());
     pm.add(createTypeBasedAAWrapperPass());
     pm.add(new llvm::CallGraphWrapperPass());
-    pm.add(new epp::PeruseInliner());
+    //pm.add(new epp::PeruseInliner());
     //pm.add(new pasha::Simplify(FunctionList[0]));
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::Namer());
