@@ -11,7 +11,7 @@
 
 #include <unordered_map>
 
-#include "Common.h"
+//#include "Common.h"
 #include "EPPDecode.h"
 
 using namespace llvm;
@@ -23,12 +23,12 @@ extern bool isTargetFunction(const Function &, const cl::list<string> &);
 extern cl::opt<string> profile;
 extern cl::opt<bool> printSrcLines;
 
-void printPath(vector<llvm::BasicBlock *> &Blocks, ofstream &Outfile) {
-    for (auto *BB : Blocks) {
-        DEBUG(errs() << BB->getName() << " ");
-        Outfile << BB->getName().str() << " ";
-    }
-}
+//void printPath(vector<llvm::BasicBlock *> &Blocks, ofstream &Outfile) {
+    //for (auto *BB : Blocks) {
+        //DEBUG(errs() << BB->getName() << " ");
+        //Outfile << BB->getName().str() << " ";
+    //}
+//}
 
 struct Path {
     Function *Func;
@@ -43,38 +43,38 @@ static bool isFunctionExiting(BasicBlock *BB) {
     return false;
 }
 
-static uint64_t pathCheck(vector<BasicBlock *> &Blocks) {
-    // Check for un-acceleratable paths,
-    // a) Indirect Function Calls
-    // b) Function calls to external libraries
-    // c) Memory allocations
-    // return 0 if un-acceleratable or num_ins otherwise
+//static uint64_t pathCheck(vector<BasicBlock *> &Blocks) {
+    //// Check for un-acceleratable paths,
+    //// a) Indirect Function Calls
+    //// b) Function calls to external libraries
+    //// c) Memory allocations
+    //// return 0 if un-acceleratable or num_ins otherwise
 
-    uint64_t NumIns = 0;
-    for (auto BB : Blocks) {
-        for (auto &I : *BB) {
-            CallSite CS(&I);
-            if (CS.isCall() || CS.isInvoke()) {
-                if (!CS.getCalledFunction()) {
-                    errs() << "Found indirect call\n";
-                    return 0;
-                } else {
-                    if (CS.getCalledFunction()->isDeclaration() &&
-                        common::checkIntrinsic(CS)) {
-                        DEBUG(errs() << "Lib Call: "
-                                     << CS.getCalledFunction()->getName()
-                                     << "\n");
-                        return 0;
-                    }
-                }
-            }
-        }
-        uint64_t N = BB->getInstList().size();
-        NumIns += N;
-    }
+    //uint64_t NumIns = 0;
+    //for (auto BB : Blocks) {
+        //for (auto &I : *BB) {
+            //CallSite CS(&I);
+            //if (CS.isCall() || CS.isInvoke()) {
+                //if (!CS.getCalledFunction()) {
+                    //errs() << "Found indirect call\n";
+                    //return 0;
+                //} else {
+                    //if (CS.getCalledFunction()->isDeclaration() &&
+                        //common::checkIntrinsic(CS)) {
+                        //DEBUG(errs() << "Lib Call: "
+                                     //<< CS.getCalledFunction()->getName()
+                                     //<< "\n");
+                        //return 0;
+                    //}
+                //}
+            //}
+        //}
+        //uint64_t N = BB->getInstList().size();
+        //NumIns += N;
+    //}
 
-    return NumIns;
-}
+    //return NumIns;
+//}
 
 bool EPPDecode::runOnModule(Module &M) {
     ifstream inFile(profile.c_str(), ios::in);
@@ -119,7 +119,7 @@ bool EPPDecode::runOnModule(Module &M) {
                (P1.count == P2.count && P1.id.uge(P2.id));
     });
 
-    ofstream Outfile("epp-sequences.txt", ios::out);
+    //ofstream Outfile("epp-sequences.txt", ios::out);
 
     uint64_t pathFail = 0;
     // Dump paths
@@ -141,32 +141,35 @@ bool EPPDecode::runOnModule(Module &M) {
             end   = 1;
             break;
         }
-        vector<BasicBlock *> blocks(path.blocks.second.begin() + start,
-                                    path.blocks.second.end() - end);
+        //vector<BasicBlock *> blocks(path.blocks.second.begin() + start,
+                                    //path.blocks.second.end() - end);
 
-        if (auto Count = pathCheck(blocks)) {
-            DEBUG(errs() << path.count << " ");
-            Outfile << path.id.toString(10, false) << " " << path.count << " ";
-            Outfile << static_cast<int>(pType) << " ";
-            Outfile << Count << " ";
-            printPath(blocks, Outfile);
-            Outfile << "\n";
-        } else {
-            pathFail++;
-            DEBUG(errs() << "Path Fail\n");
-        }
-        DEBUG(errs() << "Path ID: " << path.id.toString(10, false)
-                     << " Freq: " << path.count << "\n");
+        
+        Paths.insert(make_pair(path.id, SmallVector<BasicBlock*,16>(path.blocks.second.begin() + start,
+                       path.blocks.second.end() - end)));
+        //if (auto Count = pathCheck(blocks)) {
+            //DEBUG(errs() << path.count << " ");
+            //Outfile << path.id.toString(10, false) << " " << path.count << " ";
+            //Outfile << static_cast<int>(pType) << " ";
+            //Outfile << Count << " ";
+            //printPath(blocks, Outfile);
+            //Outfile << "\n";
+        //} else {
+            //pathFail++;
+            //DEBUG(errs() << "Path Fail\n");
+        //}
+        //DEBUG(errs() << "Path ID: " << path.id.toString(10, false)
+                     //<< " Freq: " << path.count << "\n");
 
-        if (printSrcLines) {
-            // TODO : Cleanup -- change the declaration on line 155 to SetVector
-            SetVector<BasicBlock *> SetBlocks(blocks.begin(), blocks.end());
-            common::printPathSrc(SetBlocks);
-        }
-        DEBUG(errs() << "\n");
+        //if (printSrcLines) {
+            //// TODO : Cleanup -- change the declaration on line 155 to SetVector
+            //SetVector<BasicBlock *> SetBlocks(blocks.begin(), blocks.end());
+            //common::printPathSrc(SetBlocks);
+        //}
+        //DEBUG(errs() << "\n");
     }
 
-    DEBUG(errs() << "Path Check Fails : " << pathFail << "\n");
+    //DEBUG(errs() << "Path Check Fails : " << pathFail << "\n");
 
     return false;
 }

@@ -145,11 +145,6 @@ static void instrumentModule(Module &module, std::string outFile,
 }
 
 static void interpretResults(Module &module, std::string filename) {
-    // We don't handle switch instructions, so convert
-    // them to if-else. This can also be done by the
-    // pass manager in epp/main.cpp however it breaks
-    // for some obscure function in 403.gcc. So here I
-    // only run it for my function of interest.
 
     legacy::PassManager pm;
     // pm.add(new DataLayoutPass());
