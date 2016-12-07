@@ -17,21 +17,6 @@ Efficient Path Profiling using LLVM
 3. `cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_INSTALL_UTILS=ON ../llvm-3.8.1.src && make -j 8`
 4. `sudo make install` 
 
-### Pre-Built Binaries
-
-1. `wget http://llvm.org/releases/3.8.1/clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-16.04.tar.xz \
-    && tar xf clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-16.04.tar.xz && cd clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-16.04` 
-2.  ``` 
-    export C_INCLUDE_PATH=`pwd`/include:$C_INCLUDE_PATH
-    export CPLUS_INCLUDE_PATH=`pwd`/include:$CPLUS_INCLUDE_PATH
-    export PATH=`pwd`/bin:$PATH
-    export MANPATH=`pwd`/share/man:$MANPATH
-    export LD_LIBRARY_PATH=`pwd`/lib:$LD_LIBRARY_PATH
-    export LIBRARY_PATH=`pwd`/lib:$LIBRARY_PATH
-    ``` 
-
-3. `sudo pip install llvm-lit`
-
 ## Build 
 
 1. `mkdir build && cd build`

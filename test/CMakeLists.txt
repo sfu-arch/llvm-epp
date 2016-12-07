@@ -2,6 +2,7 @@
 # For some reason this part of the LLVM scripts uses DIR instead of DIRS
 set(LLVM_LIBRARY_DIR ${LLVM_LIBRARY_DIRS})
 
+file(COPY lit.cfg DESTINATION ${CMAKE_BINARY_DIR}/test)
 
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.in

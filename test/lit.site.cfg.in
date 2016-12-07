@@ -34,7 +34,7 @@ config.host_ldflags = "@HOST_LDFLAGS@"
 config.llvm_use_intel_jitevents = "@LLVM_USE_INTEL_JITEVENTS@"
 config.llvm_use_sanitizer = "@LLVM_USE_SANITIZER@"
 config.have_zlib = "@HAVE_LIBZ@"
-config.have_dia_sdk = @HAVE_DIA_SDK@
+#config.have_dia_sdk = @HAVE_DIA_SDK@
 config.enable_ffi = "@LLVM_ENABLE_FFI@"
 config.test_examples = "@ENABLE_EXAMPLES@"
 
@@ -49,4 +49,4 @@ except KeyError:
     lit_config.fatal("unable to find %r parameter, use '--param=%s=VALUE'" % (key,key))
 
 # Let the main config do the real work.
-lit_config.load_config(config, "@LLVM_SOURCE_DIR@/test/lit.cfg")
+lit_config.load_config(config, "@CMAKE_BINARY_DIR@/test/lit.cfg")

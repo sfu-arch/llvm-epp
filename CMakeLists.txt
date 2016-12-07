@@ -88,7 +88,7 @@ if(CMAKE_BUILD_TYPE EQUAL "Debug")
     add_definitions(-DPASHA_DEBUG)
 endif()
 
-
+find_program(LIT_COMMAND lit)
 
 ############## FINAL PROJECT CONFIG #################
 
