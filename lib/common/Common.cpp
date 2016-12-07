@@ -55,141 +55,141 @@ unique_ptr<T> make_unique(Args &&... args) {
 
 namespace common {
 
-void compile(Module &m, string outputPath, char optLevel) {
-    string err;
+//void compile(Module &m, string outputPath, char optLevel) {
+    //string err;
 
-    Triple triple = Triple(m.getTargetTriple());
+    //Triple triple = Triple(m.getTargetTriple());
 
-#ifdef RT32
-    assert(triple.isArch32Bit() &&
-           "RT32 defined by CMake but input bitcode is not 32 bit!");
-#endif
+//#ifdef RT32
+    //assert(triple.isArch32Bit() &&
+           //"RT32 defined by CMake but input bitcode is not 32 bit!");
+//#endif
 
-    const Target *target = TargetRegistry::lookupTarget(MArch, triple, err);
-    if (!target) {
-        report_fatal_error("Unable to find target:\n " + err);
-    }
+    //const Target *target = TargetRegistry::lookupTarget(MArch, triple, err);
+    //if (!target) {
+        //report_fatal_error("Unable to find target:\n " + err);
+    //}
 
-    CodeGenOpt::Level level = CodeGenOpt::Default;
-    switch (optLevel) {
-    default:
-        report_fatal_error("Invalid optimization level.\n");
-    // No fall through
-    case '0':
-        level = CodeGenOpt::None;
-        break;
-    case '1':
-        level = CodeGenOpt::Less;
-        break;
-    case '2':
-        level = CodeGenOpt::Default;
-        break;
-    case '3':
-        level = CodeGenOpt::Aggressive;
-        break;
-    }
+    //CodeGenOpt::Level level = CodeGenOpt::Default;
+    //switch (optLevel) {
+    //default:
+        //report_fatal_error("Invalid optimization level.\n");
+    //// No fall through
+    //case '0':
+        //level = CodeGenOpt::None;
+        //break;
+    //case '1':
+        //level = CodeGenOpt::Less;
+        //break;
+    //case '2':
+        //level = CodeGenOpt::Default;
+        //break;
+    //case '3':
+        //level = CodeGenOpt::Aggressive;
+        //break;
+    //}
 
-    string FeaturesStr;
-    TargetOptions options = InitTargetOptionsFromCodeGenFlags();
-    unique_ptr<TargetMachine> machine(
-        target->createTargetMachine(triple.getTriple(), MCPU, FeaturesStr,
-                                    options, RelocModel, CMModel, level));
-    assert(machine.get() && "Could not allocate target machine!");
+    //string FeaturesStr;
+    //TargetOptions options = InitTargetOptionsFromCodeGenFlags();
+    //unique_ptr<TargetMachine> machine(
+        //target->createTargetMachine(triple.getTriple(), MCPU, FeaturesStr,
+                                    //options, RelocModel, CMModel, level));
+    //assert(machine.get() && "Could not allocate target machine!");
 
-    if (FloatABIForCalls != FloatABI::Default) {
-        options.FloatABIType = FloatABI::Soft;
-    }
+    //if (FloatABIForCalls != FloatABI::Default) {
+        //options.FloatABIType = FloatABI::Soft;
+    //}
 
-    error_code EC;
-    auto Out = ::make_unique<tool_output_file>(outputPath.c_str(), EC,
-                                               sys::fs::F_None);
-    if (EC) {
-        report_fatal_error("Unable to create file:\n " + EC.message());
-    }
+    //error_code EC;
+    //auto Out = ::make_unique<tool_output_file>(outputPath.c_str(), EC,
+                                               //sys::fs::F_None);
+    //if (EC) {
+        //report_fatal_error("Unable to create file:\n " + EC.message());
+    //}
 
-    // Build up all of the passes that we want to do to the module.
-    legacy::PassManager pm;
+    //// Build up all of the passes that we want to do to the module.
+    //legacy::PassManager pm;
 
-    // Add target specific info and transforms
-    pm.add(new TargetLibraryInfoWrapperPass(triple));
-    // machine->addAnalysisPasses(pm);
+    //// Add target specific info and transforms
+    //pm.add(new TargetLibraryInfoWrapperPass(triple));
+    //// machine->addAnalysisPasses(pm);
 
-    // if (const DataLayout *dl = machine->createDataLayout()) {
-    //      m.setDataLayout(dl);
-    // }
-    m.setDataLayout(machine->createDataLayout());
+    //// if (const DataLayout *dl = machine->createDataLayout()) {
+    ////      m.setDataLayout(dl);
+    //// }
+    //m.setDataLayout(machine->createDataLayout());
 
-    { // Bound this scope
-        // formatted_raw_ostream fos(out->os());
-        raw_pwrite_stream *OS = &Out->os();
-        FileType              = TargetMachine::CGFT_ObjectFile;
-        // Ask the target to add backend passes as necessary.
-        if (machine->addPassesToEmitFile(pm, *OS, FileType)) {
-            report_fatal_error("target does not support generation "
-                               "of this file type!\n");
-        }
+    //{ // Bound this scope
+        //// formatted_raw_ostream fos(out->os());
+        //raw_pwrite_stream *OS = &Out->os();
+        //FileType              = TargetMachine::CGFT_ObjectFile;
+        //// Ask the target to add backend passes as necessary.
+        //if (machine->addPassesToEmitFile(pm, *OS, FileType)) {
+            //report_fatal_error("target does not support generation "
+                               //"of this file type!\n");
+        //}
 
-        // Before executing passes, print the final values of the LLVM options.
-        cl::PrintOptionValues();
-        pm.run(m);
-    }
+        //// Before executing passes, print the final values of the LLVM options.
+        //cl::PrintOptionValues();
+        //pm.run(m);
+    //}
 
-    // Keep the output binary if we've been successful to this point.
-    Out->keep();
-}
+    //// Keep the output binary if we've been successful to this point.
+    //Out->keep();
+//}
 
-void link(const string &objectFile, const string &outputFile, char optLevel,
-          cl::list<string> &libPaths, cl::list<string> &libraries) {
-    auto clang = sys::findProgramByName("clang++");
-    if (!clang) {
-        report_fatal_error(
-            "Unable to link output file. Clang not found in PATH.");
-    }
+//void link(const string &objectFile, const string &outputFile, char optLevel,
+          //cl::list<string> &libPaths, cl::list<string> &libraries) {
+    //auto clang = sys::findProgramByName("clang++");
+    //if (!clang) {
+        //report_fatal_error(
+            //"Unable to link output file. Clang not found in PATH.");
+    //}
 
-    string opt("-O");
-    opt += optLevel;
+    //string opt("-O");
+    //opt += optLevel;
 
-    vector<string> args{clang.get(), opt, "-o", outputFile, objectFile};
+    //vector<string> args{clang.get(), opt, "-o", outputFile, objectFile};
 
-#ifdef RT32
-    args.push_back("-m32");
-#endif
+//#ifdef RT32
+    //args.push_back("-m32");
+//#endif
 
-    for (auto &libPath : libPaths) {
-        args.push_back("-L" + libPath);
-    }
+    //for (auto &libPath : libPaths) {
+        //args.push_back("-L" + libPath);
+    //}
 
-    for (auto &library : libraries) {
-        args.push_back("-l" + library);
-    }
+    //for (auto &library : libraries) {
+        //args.push_back("-l" + library);
+    //}
 
-    vector<const char *> charArgs;
-    for (auto &arg : args) {
-        charArgs.push_back(arg.c_str());
-    }
-    charArgs.push_back(0);
+    //vector<const char *> charArgs;
+    //for (auto &arg : args) {
+        //charArgs.push_back(arg.c_str());
+    //}
+    //charArgs.push_back(0);
 
-    for (auto &arg : args) {
-        DEBUG(errs() << arg.c_str() << " ");
-    }
-    DEBUG(errs() << "\n");
+    //for (auto &arg : args) {
+        //DEBUG(errs() << arg.c_str() << " ");
+    //}
+    //DEBUG(errs() << "\n");
 
-    string err;
-    if (-1 == sys::ExecuteAndWait(clang.get(), &charArgs[0], nullptr, 0, 0, 0,
-                                  &err)) {
-        report_fatal_error("Unable to link output file.");
-    }
-}
+    //string err;
+    //if (-1 == sys::ExecuteAndWait(clang.get(), &charArgs[0], nullptr, 0, 0, 0,
+                                  //&err)) {
+        //report_fatal_error("Unable to link output file.");
+    //}
+//}
 
-void generateBinary(Module &m, const string &outputFilename, char optLevel,
-                    cl::list<string> &libPaths, cl::list<string> &libraries) {
-    // Compiling to native should allow things to keep working even when the
-    // version of clang on the system and the version of LLVM used to compile
-    // the tool don't quite match up.
-    string objectFile = outputFilename + ".o";
-    compile(m, objectFile, optLevel);
-    link(objectFile, outputFilename, optLevel, libPaths, libraries);
-}
+//void generateBinary(Module &m, const string &outputFilename, char optLevel,
+                    //cl::list<string> &libPaths, cl::list<string> &libraries) {
+    //// Compiling to native should allow things to keep working even when the
+    //// version of clang on the system and the version of LLVM used to compile
+    //// the tool don't quite match up.
+    //string objectFile = outputFilename + ".o";
+    //compile(m, objectFile, optLevel);
+    //link(objectFile, outputFilename, optLevel, libPaths, libraries);
+//}
 
 void saveModule(Module &m, StringRef filename) {
     error_code EC;
@@ -454,4 +454,5 @@ void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out) {
         }
     }
 }
+
 }

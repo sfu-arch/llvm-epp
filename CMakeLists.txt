@@ -1,8 +1,8 @@
-project(Pasha)
+project(llvm-epp)
 cmake_minimum_required(VERSION 2.8)
 
-set(PACKAGE_NAME pasha)
-set(PACKAGE_VERSION 0.1)
+set(PACKAGE_NAME llvm-epp)
+set(PACKAGE_VERSION 1.0)
 set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "ska124@sfu.ca")
 
@@ -45,16 +45,16 @@ add_definitions( ${LLVM_DEFINITIONS} )
 
 # Find clang 
 
-set(CLANG_VERSION_REQ "${LLVM_PACKAGE_VERSION}")
-find_package(Clang)
-if(CLANG_FOUND)
-    if(${CLANG_VERSION} VERSION_EQUAL CLANG_VERSION_REQ) 
-    else()
-        message(FATAL_ERROR "Incompatible clang version -- need ${CLANG_VERSION_REQ}, found ${CLANG_VERSION}")
-    endif()
-else()
-    message(FATAL_ERROR "Pasha needs clang ${CLANG_VERSION_REQ} in PATH, Cmake will exit" )
-endif()
+#set(CLANG_VERSION_REQ "${LLVM_PACKAGE_VERSION}")
+#find_package(Clang)
+#if(CLANG_FOUND)
+    #if(${CLANG_VERSION} VERSION_EQUAL CLANG_VERSION_REQ) 
+    #else()
+        #message(FATAL_ERROR "Incompatible clang version -- need ${CLANG_VERSION_REQ}, found ${CLANG_VERSION}")
+    #endif()
+#else()
+    #message(FATAL_ERROR "Pasha needs clang ${CLANG_VERSION_REQ} in PATH, Cmake will exit" )
+#endif()
 
 
 # 32 bit runtime
@@ -66,21 +66,21 @@ else()
 endif()
 
 
-function(add_bitcode BC FILES) 
-    add_custom_command(
-        OUTPUT ${BC}
-        COMMAND ${CLANG_EXE} 
-                -c -g -emit-llvm ${BITCODE_FLAGS}
-                ${FILES}
-                -o ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${BC}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        DEPENDS ${FILES}
-    )
-    add_custom_target(bitcode ALL
-        DEPENDS ${BC}
-        COMMENT "Generate bitcode for helpers"
-    )
-endfunction(add_bitcode)
+#function(add_bitcode BC FILES) 
+    #add_custom_command(
+        #OUTPUT ${BC}
+        #COMMAND ${CLANG_EXE} 
+                #-c -g -emit-llvm ${BITCODE_FLAGS}
+                #${FILES}
+                #-o ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${BC}
+        #WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        #DEPENDS ${FILES}
+    #)
+    #add_custom_target(bitcode ALL
+        #DEPENDS ${BC}
+        #COMMENT "Generate bitcode for helpers"
+    #)
+#endfunction(add_bitcode)
 
 # Debug Variable Definition
 

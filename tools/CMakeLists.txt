@@ -1,1 +1,1 @@
-add_subdirectory(epp)
+add_subdirectory(llvm-epp)

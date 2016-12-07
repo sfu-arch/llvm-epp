@@ -16,28 +16,30 @@ static APInt dir(const Edge &E, const Edge &F) {
         return APInt(128, -1, true);
 }
 
-static void incDFSHelper(APInt Events, BasicBlock *V, Edge E,
+// [Larus'94] - Efficiently counting program events
+//
+//  for each f belongs to T : f != e and v = tgt( f ) do
+//      DFS( Dir(e, f ) * events + Events( f ) , src( f ) , f )
+//  od
+//  for each f belongs to T : f != e and v = src( f ) do
+//      DFS( Dir(e, f ) * events + Events( f ) , tgt( f ) , f )
+//  od
+//  for each f belongs to E − T : v = src( f ) or v = tgt( f ) do
+//      Increment( f ) : = Increment( f ) + Dir(e, f ) * events
+//  fi
+//
+static void dfs(APInt Events, BasicBlock *V, Edge E,
                          const EdgeListTy &ST, const EdgeListTy &Chords,
                          EdgeWtMapTy &Val, EdgeWtMapTy &Inc) {
-    //  for each f belongs to T : f != e and v = tgt( f ) do
-    //      DFS( Dir(e, f ) * events + Events( f ) , src( f ) , f )
-    //  od
-    //  for each f belongs to T : f != e and v = src( f ) do
-    //      DFS( Dir(e, f ) * events + Events( f ) , tgt( f ) , f )
-    //  od
-    //  for each f belongs to E − T : v = src( f ) or v = tgt( f ) do
-    //      Increment( f ) : = Increment( f ) + Dir(e, f ) * events
-    //  fi
-
     for (auto &F : ST) {
         if (E != F && V == TGT(F))
-            incDFSHelper(dir(E, F) * Events + Val[F], SRC(F), F, ST, Chords,
+            dfs(dir(E, F) * Events + Val[F], SRC(F), F, ST, Chords,
                          Val, Inc);
     }
 
     for (auto &F : ST) {
         if (E != F && V == SRC(F))
-            incDFSHelper(dir(E, F) * Events + Val[F], TGT(F), F, ST, Chords,
+            dfs(dir(E, F) * Events + Val[F], TGT(F), F, ST, Chords,
                          Val, Inc);
     }
 
@@ -55,7 +57,7 @@ void altcfg::computeIncrement(EdgeWtMapTy &Inc, BasicBlock *Entry,
     for (auto &C : Chords)
         Inc.insert({C, APInt(128, 0, true)});
 
-    incDFSHelper(APInt(128, 0, true), Entry, {nullptr, nullptr}, ST, Chords,
+    dfs(APInt(128, 0, true), Entry, {nullptr, nullptr}, ST, Chords,
                  Weights, Inc);
 
     initWt({Exit, Entry});
