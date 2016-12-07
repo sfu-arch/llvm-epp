@@ -2,7 +2,7 @@
 # For some reason this part of the LLVM scripts uses DIR instead of DIRS
 set(LLVM_LIBRARY_DIR ${LLVM_LIBRARY_DIRS})
 
-file(COPY lit.cfg DESTINATION ${CMAKE_BINARY_DIR}/test)
+file(COPY lit.cfg srcs DESTINATION ${CMAKE_BINARY_DIR}/test)
 
 configure_lit_site_cfg(
   ${CMAKE_CURRENT_SOURCE_DIR}/lit.site.cfg.in
@@ -14,9 +14,10 @@ configure_lit_site_cfg(
 # NOTE: Sync the substitutions in test/lit.cfg when adding to this list.
 set(LLVM_TEST_DEPENDS
           llvm-epp
+          epp-rt-agg
         )
 
-add_lit_testsuite(check-epp "Running the LLVM regression tests"
+add_lit_testsuite(check-epp "Running regression tests"
   ${CMAKE_CURRENT_BINARY_DIR}
   PARAMS llvm_site_config=${CMAKE_CURRENT_BINARY_DIR}/lit.site.cfg
          llvm_unit_site_config=${CMAKE_CURRENT_BINARY_DIR}/Unit/lit.site.cfg
