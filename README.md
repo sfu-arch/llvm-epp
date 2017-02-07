@@ -1,6 +1,8 @@
 ## llvm-epp 
 Efficient Path Profiling using LLVM 
 
+[![Build Status](https://travis-ci.org/sfu-arch/llvm-epp.svg?branch=master)](https://travis-ci.org/sfu-arch/llvm-epp)
+
 ## Requires 
 
 1. LLVM 3.8
