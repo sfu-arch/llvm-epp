@@ -34,12 +34,12 @@ Efficient Path Profiling using LLVM
 ## Usage
 
 1. `clang -c -g -emit-llvm prog.c`
-2. `llvm-epp prog.bc -o prog`
+2. `llvm-epp -epp-fn=main prog.bc -o prog`
 3. `clang prog.epp.bc -o exe`
 4. `./exe`
 5. `llvm-epp -p=path-profile-results.txt prog.bc`
 
-## ToDo
+## To Do
 
 1. Multiple function support
 2. Multithread support
