@@ -58,32 +58,34 @@ using namespace llvm;
 using namespace llvm::sys;
 using namespace epp;
 
-cl::opt<string> inPath(cl::Positional, cl::desc("<Module to analyze>"),
-                       cl::value_desc("bitcode filename"), cl::Required);
+cl::OptionCategory LLVMEppOptionCategory("EPP Options","Additional options for the EPP tool");
 
-cl::opt<string> outFile("o", cl::desc("Filename of the instrumented program"),
-                        cl::value_desc("filename"));
+cl::opt<string> inPath(cl::Positional, cl::desc("<Module to analyze>"),
+                       cl::value_desc("bitcode filename"), cl::Required, cl::cat(LLVMEppOptionCategory));
+
+cl::opt<string> outFile("o", cl::desc("Filename of the instrumented bitcode"),
+                        cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory));
 
 cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
-                        cl::value_desc("filename"));
+                        cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory));
 
-cl::opt<unsigned>
-    numberOfPaths("n", cl::desc("Number of most frequent paths to compute"),
-                  cl::value_desc("number"), cl::init(5));
+//cl::opt<unsigned>
+    //numberOfPaths("n", cl::desc("Number of most frequent paths to compute"),
+                  //cl::value_desc("number"), cl::init(5));
 
 // Determine optimization level.
-cl::opt<char> optLevel("O",
-                       cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] "
-                                "(default = '-O2')"),
-                       cl::Prefix, cl::ZeroOrMore, cl::init('2'));
+//cl::opt<char> optLevel("O",
+                       //cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] "
+                                //"(default = '-O2')"),
+                       //cl::Prefix, cl::ZeroOrMore, cl::init('2'));
 
-cl::list<string> libPaths("L", cl::Prefix,
-                          cl::desc("Specify a library search path"),
-                          cl::value_desc("directory"));
+//cl::list<string> libPaths("L", cl::Prefix,
+                          //cl::desc("Specify a library search path"),
+                          //cl::value_desc("directory"));
 
-cl::list<string> libraries("l", cl::Prefix,
-                           cl::desc("Specify libraries to link to"),
-                           cl::value_desc("library prefix"));
+//cl::list<string> libraries("l", cl::Prefix,
+                           //cl::desc("Specify libraries to link to"),
+                           //cl::value_desc("library prefix"));
 
 
 cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
@@ -102,6 +104,19 @@ bool isTargetFunction(const Function &f,
             return true;
     return false;
 }
+
+static
+void saveModule(Module &m, StringRef filename) {
+    error_code EC;
+    raw_fd_ostream out(filename.data(), EC, sys::fs::F_None);
+
+    if (EC) {
+        report_fatal_error("error saving llvm module to '" + filename +
+                           "': \n" + EC.message());
+    }
+    WriteBitcodeToFile(&m, out);
+}
+
 
 static void instrumentModule(Module &module, std::string outFile,
                              const char *argv0) {
@@ -140,7 +155,7 @@ static void instrumentModule(Module &module, std::string outFile,
     //libraries.push_back("rt");
     //libraries.push_back("m");
 
-    common::saveModule(module, outFile + ".epp.bc");
+    saveModule(module, outFile + ".epp.bc");
     //common::generateBinary(module, outFile, optLevel, libPaths, libraries);
 }
 
@@ -190,7 +205,7 @@ int main(int argc, char **argv, const char **env) {
         return -1;
     }
 
-    common::optimizeModule(module.get());
+    //common::optimizeModule(module.get());
 
     if (!profile.empty()) {
         interpretResults(*module, profile);

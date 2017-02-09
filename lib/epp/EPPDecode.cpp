@@ -43,38 +43,25 @@ static bool isFunctionExiting(BasicBlock *BB) {
     return false;
 }
 
-//static uint64_t pathCheck(vector<BasicBlock *> &Blocks) {
-    //// Check for un-acceleratable paths,
-    //// a) Indirect Function Calls
-    //// b) Function calls to external libraries
-    //// c) Memory allocations
-    //// return 0 if un-acceleratable or num_ins otherwise
+void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out) {
+    unsigned line = 0;
+    llvm::StringRef file;
+    for (auto *bb : blocks) {
+        for (auto &instruction : *bb) {
+            MDNode *n = instruction.getMetadata("dbg");
+            if (!n) {
+                continue;
+            }
+            DebugLoc Loc(n);
+            if (Loc->getLine() != line || Loc->getFilename() != file) {
+                line = Loc->getLine();
+                file = Loc->getFilename();
+                out << "File " << file.str() << " line " << line << "\n";
+            }
+        }
+    }
+}
 
-    //uint64_t NumIns = 0;
-    //for (auto BB : Blocks) {
-        //for (auto &I : *BB) {
-            //CallSite CS(&I);
-            //if (CS.isCall() || CS.isInvoke()) {
-                //if (!CS.getCalledFunction()) {
-                    //errs() << "Found indirect call\n";
-                    //return 0;
-                //} else {
-                    //if (CS.getCalledFunction()->isDeclaration() &&
-                        //common::checkIntrinsic(CS)) {
-                        //DEBUG(errs() << "Lib Call: "
-                                     //<< CS.getCalledFunction()->getName()
-                                     //<< "\n");
-                        //return 0;
-                    //}
-                //}
-            //}
-        //}
-        //uint64_t N = BB->getInstList().size();
-        //NumIns += N;
-    //}
-
-    //return NumIns;
-//}
 
 bool EPPDecode::runOnModule(Module &M) {
     ifstream inFile(profile.c_str(), ios::in);
