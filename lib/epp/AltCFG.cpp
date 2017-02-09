@@ -123,6 +123,11 @@ EdgeListTy altcfg::get() const {
     return Ret;
 }
 
+bool altcfg::add(const BasicBlock *Src) {
+    CFG.insert({Src, SuccListTy()});
+    return true;
+}
+
 bool altcfg::add(BasicBlock *Src, BasicBlock *Tgt, BasicBlock *Entry,
                  BasicBlock *Exit) {
 
@@ -161,7 +166,10 @@ bool altcfg::add(BasicBlock *Src, BasicBlock *Tgt, BasicBlock *Entry,
 }
 
 SmallVector<BasicBlock *, 4> altcfg::succs(const BasicBlock *B) {
-    assert(CFG.count(B) && "Block does not exist in CFG");
+
+    assert( CFG.count(B)  &&
+            "Block does not exist in CFG");
+
     if (SuccCache.count(B) == 0) {
         SmallVector<BasicBlock *, 4> R;
         for (auto &E : get()) {

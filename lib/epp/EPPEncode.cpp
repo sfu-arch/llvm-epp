@@ -171,12 +171,19 @@ void EPPEncode::encode(Function &F) {
         }
     }
 
+    // If the function has only one basic block, then there are no edges added.
+    // Handle this case separately by telling the AltCFG structure.
+    
+    if(Entry == Exit) {
+        ACFG.add(Entry);
+    }
+
     for (auto &B : POB) {
         APInt pathCount(128, 0, true);
 
         if (isFunctionExiting(B))
             pathCount = 1;
-
+        
         for (auto &S : ACFG.succs(B)) {
             ACFG[{B, S}] = pathCount;
             if (numPaths.count(S) == 0)

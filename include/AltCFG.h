@@ -50,6 +50,7 @@ class altcfg {
     EdgeWtMapTy getIncrements(BasicBlock *, BasicBlock *);
 
   public:
+    bool add(const BasicBlock*);
     bool add(BasicBlock *Src, BasicBlock *Tgt, BasicBlock *Entry = nullptr,
              BasicBlock *Exit = nullptr);
     APInt &operator[](const Edge &);
