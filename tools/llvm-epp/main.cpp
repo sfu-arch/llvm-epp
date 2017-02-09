@@ -122,14 +122,11 @@ static void instrumentModule(Module &module, std::string outFile,
                              const char *argv0) {
     // Build up all of the passes that we want to run on the module.
     legacy::PassManager pm;
-    // pm.add(new DataLayoutWrapperPass());
     pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
     pm.add(llvm::createBasicAAWrapperPass());
     pm.add(createTypeBasedAAWrapperPass());
     pm.add(new llvm::CallGraphWrapperPass());
-    //pm.add(new epp::PeruseInliner());
-    //pm.add(new pasha::Simplify(FunctionList[0]));
     pm.add(createBreakCriticalEdgesPass());
     //pm.add(new epp::Namer());
     pm.add(new LoopInfoWrapperPass());
@@ -137,41 +134,18 @@ static void instrumentModule(Module &module, std::string outFile,
     pm.add(createVerifierPass());
     pm.run(module);
 
-    // First search the directory of the binary for the library, in case it is
-    // all bundled together.
-    //SmallString<32> invocationPath(argv0);
-    //sys::path::remove_filename(invocationPath);
-    //if (!invocationPath.empty()) {
-        //libPaths.push_back(invocationPath.str());
-    //}
-//// If the builder doesn't plan on installing it, we still need to get to the
-//// runtime library somehow, so just build in the path to the temporary one.
-//#ifdef CMAKE_INSTALL_PREFIX
-    //libPaths.push_back(CMAKE_INSTALL_PREFIX "/lib");
-//#elif defined(CMAKE_TEMP_LIBRARY_PATH)
-    //libPaths.push_back(CMAKE_TEMP_LIBRARY_PATH);
-//#endif
-    //libraries.push_back(RUNTIME_LIB);
-    //libraries.push_back("rt");
-    //libraries.push_back("m");
-
     saveModule(module, outFile + ".epp.bc");
-    //common::generateBinary(module, outFile, optLevel, libPaths, libraries);
 }
 
 static void interpretResults(Module &module, std::string filename) {
 
     legacy::PassManager pm;
-    // pm.add(new DataLayoutPass());
     pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
     pm.add(createBasicAAWrapperPass());
     pm.add(createTypeBasedAAWrapperPass());
     pm.add(new llvm::CallGraphWrapperPass());
-    //pm.add(new epp::PeruseInliner());
-    //pm.add(new pasha::Simplify(FunctionList[0]));
     pm.add(createBreakCriticalEdgesPass());
-    //pm.add(new epp::Namer());
     pm.add(new LoopInfoWrapperPass());
     pm.add(new epp::EPPDecode());
     pm.add(createVerifierPass());
@@ -205,7 +179,6 @@ int main(int argc, char **argv, const char **env) {
         return -1;
     }
 
-    //common::optimizeModule(module.get());
 
     if (!profile.empty()) {
         interpretResults(*module, profile);
