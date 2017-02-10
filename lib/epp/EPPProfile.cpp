@@ -14,7 +14,6 @@
 #include "llvm/Transforms/Utils/ModuleUtils.h"
 
 #include "AltCFG.h"
-//#include "Common.h"
 #include "EPPEncode.h"
 #include "EPPProfile.h"
 #include <cassert>
@@ -29,30 +28,35 @@ extern cl::list<std::string> FunctionList;
 extern bool isTargetFunction(const Function &f,
                              const cl::list<std::string> &FunctionList);
 
-bool EPPProfile::doInitialization(Module &m) {
-    assert(FunctionList.size() == 1 &&
-           "Only one function can be marked for profiling");
+bool EPPProfile::doInitialization(Module &M) {
+    uint32_t Id = 0;
+    for(auto &F : M) {
+        FunctionIds[&F] = Id++; 
+    }
+
     return false;
 }
 
-bool EPPProfile::doFinalization(Module &m) { return false; }
+bool EPPProfile::doFinalization(Module &M) { 
+    return false; 
+}
 
 bool EPPProfile::runOnModule(Module &module) {
     DEBUG(errs() << "Running Profile\n");
     auto &Ctx = module.getContext();
 
     for (auto &func : module) {
-        if (isTargetFunction(func, FunctionList)) {
+        //if (isTargetFunction(func, FunctionList)) {
             LI        = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
             auto &enc = getAnalysis<EPPEncode>(func);
             instrument(func, enc);
-        }
+        //}
     }
 
     auto *voidTy = Type::getVoidTy(Ctx);
-
+    auto *int32Ty = Type::getInt32Ty(Ctx);
     auto *init =
-        module.getOrInsertFunction("PaThPrOfIlInG_init", voidTy, nullptr);
+        module.getOrInsertFunction("PaThPrOfIlInG_init", voidTy, int32Ty, nullptr);
     appendToGlobalCtors(module, llvm::cast<Function>(init), 0);
 
     auto *printer =
@@ -76,6 +80,13 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Module *M    = F.getParent();
     auto &Ctx    = M->getContext();
     auto *voidTy = Type::getVoidTy(Ctx);
+    auto *FuncIdTy = Type::getInt32Ty(Ctx);
+
+    auto FuncId = FunctionIds[&F];
+
+    // 1. Lookup the Function to Function ID mapping here
+    // 2. Create a constant int for the id
+    // 3. Pass the id in the logpath2 function call
 
 #ifndef RT32
     auto *CtrTy = Type::getInt128Ty(Ctx);
@@ -84,9 +95,10 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     auto *CtrTy = Type::getInt64Ty(Ctx);
     auto *Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
 #endif
-
+    
+    auto *FIdArg = ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
     auto *logFun2 = M->getOrInsertFunction("PaThPrOfIlInG_logPath2", voidTy,
-                                           CtrTy, nullptr);
+                                           CtrTy, FuncIdTy, nullptr);
 
     auto *Ctr = new AllocaInst(CtrTy, nullptr, "epp.ctr",
                                &*F.getEntryBlock().getFirstInsertionPt());
@@ -113,10 +125,10 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         }
     };
 
-    auto InsertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap](BasicBlock *BB) {
+    auto InsertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap, &FIdArg](BasicBlock *BB) {
         auto logPos = BB->getTerminator();
         auto *LI    = new LoadInst(Ctr, "ld.epp.ctr", logPos);
-        auto *CI    = CallInst::Create(logFun2, {LI}, "");
+        auto *CI    = CallInst::Create(logFun2, {LI, FIdArg}, "");
         CI->insertAfter(LI);
         (new StoreInst(Zap, Ctr))->insertAfter(CI);
     };

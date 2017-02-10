@@ -44,14 +44,10 @@
 #include <memory>
 #include <string>
 
-//#include "AllInliner.h"
-#include "Common.h"
 #include "EPPDecode.h"
 #include "EPPProfile.h"
-//#include "Namer.h"
-//#include "Simplify.h"
 
-#include "config.h"
+//#include "config.h"
 
 using namespace std;
 using namespace llvm;
@@ -68,24 +64,6 @@ cl::opt<string> outFile("o", cl::desc("Filename of the instrumented bitcode"),
 
 cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
                         cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory));
-
-//cl::opt<unsigned>
-    //numberOfPaths("n", cl::desc("Number of most frequent paths to compute"),
-                  //cl::value_desc("number"), cl::init(5));
-
-// Determine optimization level.
-//cl::opt<char> optLevel("O",
-                       //cl::desc("Optimization level. [-O0, -O1, -O2, or -O3] "
-                                //"(default = '-O2')"),
-                       //cl::Prefix, cl::ZeroOrMore, cl::init('2'));
-
-//cl::list<string> libPaths("L", cl::Prefix,
-                          //cl::desc("Specify a library search path"),
-                          //cl::value_desc("directory"));
-
-//cl::list<string> libraries("l", cl::Prefix,
-                           //cl::desc("Specify libraries to link to"),
-                           //cl::value_desc("library prefix"));
 
 
 cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),

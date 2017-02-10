@@ -3,6 +3,7 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/ADT/DenseMap.h"
 
 #include "EPPEncode.h"
 
@@ -11,6 +12,7 @@ struct EPPProfile : public llvm::ModulePass {
     static char ID;
 
     llvm::LoopInfo *LI;
+    llvm::DenseMap<llvm::Function *, uint32_t> FunctionIds;
 
     EPPProfile() : llvm::ModulePass(ID), LI(nullptr) {}
 
