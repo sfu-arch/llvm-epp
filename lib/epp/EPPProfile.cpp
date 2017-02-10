@@ -41,24 +41,36 @@ bool EPPProfile::doFinalization(Module &M) {
     return false; 
 }
 
+
 bool EPPProfile::runOnModule(Module &module) {
     DEBUG(errs() << "Running Profile\n");
     auto &Ctx = module.getContext();
 
+    uint32_t NumberOfFunctions = 0;
     for (auto &func : module) {
-        //if (isTargetFunction(func, FunctionList)) {
-            LI        = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
+        if(!func.isDeclaration()) {
+            LI = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
             auto &enc = getAnalysis<EPPEncode>(func);
             instrument(func, enc);
-        //}
+            NumberOfFunctions++;
+        }
     }
 
     auto *voidTy = Type::getVoidTy(Ctx);
     auto *int32Ty = Type::getInt32Ty(Ctx);
-    auto *init =
-        module.getOrInsertFunction("PaThPrOfIlInG_init", voidTy, int32Ty, nullptr);
-    appendToGlobalCtors(module, llvm::cast<Function>(init), 0);
 
+    // Add Global Constructor for initializing path profiling 
+    auto * EPPInitCtor =
+        llvm::cast<Function>(module.getOrInsertFunction("__epp_init", voidTy, nullptr));
+    auto * EPPInit =
+        llvm::cast<Function>(module.getOrInsertFunction("PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
+    auto * CtorBB = BasicBlock::Create(Ctx, "entry", EPPInitCtor); 
+    auto * Arg = ConstantInt::get(int32Ty, NumberOfFunctions, false);
+    auto * CI = CallInst::Create(EPPInit, {Arg}, "", CtorBB);
+    ReturnInst::Create(Ctx, CtorBB);
+    appendToGlobalCtors(module, EPPInitCtor, 0);
+
+    // Add global destructor to dump out results
     auto *printer =
         module.getOrInsertFunction("PaThPrOfIlInG_save", voidTy, nullptr);
     appendToGlobalDtors(module, llvm::cast<Function>(printer), 0);
@@ -128,7 +140,8 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     auto InsertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap, &FIdArg](BasicBlock *BB) {
         auto logPos = BB->getTerminator();
         auto *LI    = new LoadInst(Ctr, "ld.epp.ctr", logPos);
-        auto *CI    = CallInst::Create(logFun2, {LI, FIdArg}, "");
+        vector<Value*> Params = {LI, FIdArg};
+        auto *CI    = CallInst::Create(logFun2, Params, "");
         CI->insertAfter(LI);
         (new StoreInst(Zap, Ctr))->insertAfter(CI);
     };

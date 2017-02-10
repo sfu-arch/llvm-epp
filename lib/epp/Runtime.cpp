@@ -15,7 +15,7 @@ extern "C" {
 std::vector<std::map<__int128, uint64_t>> EPP(path);
 
 void EPP(init)(uint32_t NumberOfFunctions) {
-    EPP(path).reserve(NumberOfFunctions);
+    EPP(path).resize(NumberOfFunctions);
 }
 
 void EPP(logPath2)(__int128 Val, uint32_t FunctionId) { 
@@ -24,8 +24,8 @@ void EPP(logPath2)(__int128 Val, uint32_t FunctionId) {
 
 void EPP(save)() {
     FILE *fp = fopen("path-profile-results.txt", "w");
-    fprintf(fp, "%lu\n", EPP(path).size());
     for (auto &FV : EPP(path)) {
+        fprintf(fp, "%lu\n", FV.size());
         for (auto &KV : FV) {
             uint64_t low  = (uint64_t)KV.first;
             uint64_t high = (KV.first >> 64);
@@ -43,7 +43,7 @@ void EPP(save)() {
 std::vector<std::map<uint64_t, uint64_t>> EPP(path);
 
 void EPP(init)(uint32_t NumberOfFunctions) {
-    EPP(path).reserve(NumberOfFunctions);
+    EPP(path).resize(NumberOfFunctions);
 }
 
 void EPP(logPath2)(uint64_t Val, uint32_t FunctionId) { 
@@ -52,8 +52,8 @@ void EPP(logPath2)(uint64_t Val, uint32_t FunctionId) {
 
 void EPP(save)() {
     FILE *fp = fopen("path-profile-results.txt", "w");
-    fprintf(fp, "%u\n", EPP(path).size());
     for (auto &FV : EPP(path)) {
+        fprintf(fp, "%u\n", EPP(path).size());
         for (auto &KV : FV) {
             // Print the hex values with a 0x prefix messes up
             // the APInt constructor.

@@ -14,7 +14,7 @@ configure_lit_site_cfg(
 # NOTE: Sync the substitutions in test/lit.cfg when adding to this list.
 set(LLVM_TEST_DEPENDS
           llvm-epp
-          epp-rt-agg
+          epp-rt
         )
 
 add_lit_testsuite(check-epp "Running regression tests"
