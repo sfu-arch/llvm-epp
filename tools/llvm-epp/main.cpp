@@ -73,16 +73,6 @@ cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
 cl::opt<bool> printSrcLines("src", cl::desc("Print Source Line Numbers"),
                             cl::init(false));
 
-bool isTargetFunction(const Function &f,
-                      const cl::list<std::string> &FunctionList) {
-    if (f.isDeclaration())
-        return false;
-    for (auto &fname : FunctionList)
-        if (fname == f.getName())
-            return true;
-    return false;
-}
-
 static
 void saveModule(Module &m, StringRef filename) {
     error_code EC;

@@ -18,8 +18,6 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-extern cl::list<string> FunctionList;
-extern bool isTargetFunction(const Function &, const cl::list<string> &);
 extern cl::opt<string> profile;
 extern cl::opt<bool> printSrcLines;
 
@@ -69,13 +67,12 @@ bool EPPDecode::runOnModule(Module &M) {
 
     uint64_t totalPathCount;
     inFile >> totalPathCount;
-
     vector<Path> paths;
     paths.reserve(totalPathCount);
 
     EPPEncode *Enc = nullptr;
     for (auto &F : M) {
-        if (isTargetFunction(F, FunctionList)) {
+        if (!F.isDeclaration()) {
             Enc = &getAnalysis<EPPEncode>(F);
             vector<uint64_t> counts(totalPathCount, 0);
             string PathIdStr;
@@ -87,13 +84,6 @@ bool EPPDecode::runOnModule(Module &M) {
         }
     }
     inFile.close();
-
-    // vector<pair<PathType, vector<llvm::BasicBlock *>>>
-    // bbSequences;
-    // bbSequences.reserve(totalPathCount);
-    // for (auto &path : paths) {
-    // bbSequences.push_back(decode(*path.Func, path.id, *Enc));
-    //}
 
     for (auto &path : paths) {
         path.blocks = decode(*path.Func, path.id, *Enc);
@@ -212,4 +202,4 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
 }
 
 char EPPDecode::ID = 0;
-static RegisterPass<EPPDecode> X("", "PASHA - EPPDecode");
+static RegisterPass<EPPDecode> X("", "EPPDecode");

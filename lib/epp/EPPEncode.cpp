@@ -210,4 +210,4 @@ void EPPEncode::encode(Function &F) {
 }
 
 char EPPEncode::ID = 0;
-static RegisterPass<EPPEncode> X("", "PASHA - EPPEncode");
+static RegisterPass<EPPEncode> X("", "EPPEncode");

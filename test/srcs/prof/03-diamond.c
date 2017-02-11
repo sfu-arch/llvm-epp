@@ -10,6 +10,6 @@ int main(int argc, char* argv[]) {
 }
 
 // RUN: clang -c -g -emit-llvm %s -o %t.bc 
-// RUN: llvm-epp -epp-fn=main %t.bc -o %t 2>&1 | tail -n 1 > %t1
-// RUN: echo "NumPaths : 2" > %t2
-// RUN: diff %t1 %t2 
+// RUN: llvm-epp -epp-fn=main %t.bc -o %t 
+// RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt 2> %t.compile 
+// RUN: %t-exec > %t.log

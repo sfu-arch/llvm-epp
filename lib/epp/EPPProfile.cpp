@@ -24,9 +24,6 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-extern cl::list<std::string> FunctionList;
-extern bool isTargetFunction(const Function &f,
-                             const cl::list<std::string> &FunctionList);
 
 bool EPPProfile::doInitialization(Module &M) {
     uint32_t Id = 0;
@@ -229,4 +226,4 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 }
 
 char EPPProfile::ID = 0;
-static RegisterPass<EPPProfile> X("", "PASHA - EPPProfile");
+static RegisterPass<EPPProfile> X("", "EPPProfile");
