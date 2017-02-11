@@ -10,6 +10,7 @@
 #include <fstream>
 
 #include <unordered_map>
+#include <sstream>
 
 //#include "Common.h"
 #include "EPPDecode.h"
@@ -20,13 +21,6 @@ using namespace std;
 
 extern cl::opt<string> profile;
 extern cl::opt<bool> printSrcLines;
-
-//void printPath(vector<llvm::BasicBlock *> &Blocks, ofstream &Outfile) {
-    //for (auto *BB : Blocks) {
-        //DEBUG(errs() << BB->getName() << " ");
-        //Outfile << BB->getName().str() << " ";
-    //}
-//}
 
 struct Path {
     Function *Func;
@@ -40,6 +34,16 @@ static bool isFunctionExiting(BasicBlock *BB) {
         return true;
     return false;
 }
+
+bool EPPDecode::doInitialization(Module &M) {
+    uint32_t Id = 0;
+    for(auto &F : M) {
+        FunctionIdToPtr[Id++] = &F; 
+    }
+
+    return false;
+}
+
 
 void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out) {
     unsigned line = 0;
@@ -62,8 +66,49 @@ void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out) {
 
 
 bool EPPDecode::runOnModule(Module &M) {
-    ifstream inFile(profile.c_str(), ios::in);
-    assert(inFile.is_open() && "Could not open file for reading");
+    ifstream InFile(profile.c_str(), ios::in);
+    assert(InFile.is_open() && "Could not open file for reading");
+
+    string Line;
+    while (getline(InFile, Line)) { 
+        uint32_t FunctionId = 0, NumberOfPaths = 0;
+        try {
+            stringstream SS(Line);
+            SS >> FunctionId >> NumberOfPaths;
+        } 
+        catch(exception &E) {
+            report_fatal_error("Invalid profile format");
+        }
+
+        vector<Path> paths;
+        paths.reserve(NumberOfPaths);
+        Function *FPtr = FunctionIdToPtr[FunctionId];
+        EPPEncode *Enc = nullptr;
+        Enc = &getAnalysis<EPPEncode>(*FPtr);
+
+        for(uint32_t I = 0; I < NumberOfPaths; I++) {
+            getline(InFile, Line);
+            stringstream SS(Line);
+            string PathIdStr;
+            uint64_t PathCount;
+            APInt PathId(128, StringRef(PathIdStr), 16);
+            paths.push_back({FPtr, PathId, PathCount});
+            paths.back().blocks = decode(*FPtr, PathId, *Enc);
+        }
+
+        // Sort the paths in descending order of their frequency
+        // If the frequency is same, descending order of id (id cannot be same)
+        sort(paths.begin(), paths.end(), [](const Path &P1, const Path &P2) {
+            return (P1.count > P2.count) ||
+                   (P1.count == P2.count && P1.id.uge(P2.id));
+        });
+
+    }
+
+    InFile.close();
+    return false;
+
+    /*******
 
     uint64_t totalPathCount;
     inFile >> totalPathCount;
@@ -100,7 +145,6 @@ bool EPPDecode::runOnModule(Module &M) {
 
     uint64_t pathFail = 0;
     // Dump paths
-    // for (size_t i = 0, e = bbSequences.size(); i < e; ++i) {
     for (auto &path : paths) {
         auto pType = path.blocks.first;
         int start = 0, end = 0;
@@ -118,37 +162,13 @@ bool EPPDecode::runOnModule(Module &M) {
             end   = 1;
             break;
         }
-        //vector<BasicBlock *> blocks(path.blocks.second.begin() + start,
-                                    //path.blocks.second.end() - end);
-
         
-        Paths.insert(make_pair(path.id, SmallVector<BasicBlock*,16>(path.blocks.second.begin() + start,
-                       path.blocks.second.end() - end)));
-        //if (auto Count = pathCheck(blocks)) {
-            //DEBUG(errs() << path.count << " ");
-            //Outfile << path.id.toString(10, false) << " " << path.count << " ";
-            //Outfile << static_cast<int>(pType) << " ";
-            //Outfile << Count << " ";
-            //printPath(blocks, Outfile);
-            //Outfile << "\n";
-        //} else {
-            //pathFail++;
-            //DEBUG(errs() << "Path Fail\n");
-        //}
-        //DEBUG(errs() << "Path ID: " << path.id.toString(10, false)
-                     //<< " Freq: " << path.count << "\n");
-
-        //if (printSrcLines) {
-            //// TODO : Cleanup -- change the declaration on line 155 to SetVector
-            //SetVector<BasicBlock *> SetBlocks(blocks.begin(), blocks.end());
-            //common::printPathSrc(SetBlocks);
-        //}
-        //DEBUG(errs() << "\n");
+        Paths.insert(make_pair(path.id, SmallVector<BasicBlock*,16>(path.blocks.second.begin() + start, path.blocks.second.end() - end)));
     }
 
-    //DEBUG(errs() << "Path Check Fails : " << pathFail << "\n");
 
     return false;
+    *****/
 }
 
 pair<PathType, vector<llvm::BasicBlock *>>

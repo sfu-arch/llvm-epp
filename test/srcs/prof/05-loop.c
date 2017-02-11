@@ -7,6 +7,6 @@ int main(int argc, char* argv[]) {
 }
 
 // RUN: clang -c -g -emit-llvm %s -o %t.bc 
-// RUN: llvm-epp -epp-fn=main %t.bc -o %t 
+// RUN: llvm-epp %t.bc -o %t 
 // RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt 2> %t.compile 
 // RUN: %t-exec > %t.log

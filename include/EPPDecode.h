@@ -40,7 +40,7 @@ enum PathType { RIRO, FIRO, RIFO, FIFO };
 struct EPPDecode : public llvm::ModulePass {
     static char ID;
     llvm::StringRef filename;
-    //size_t numberToReturn;
+    llvm::DenseMap<uint32_t, llvm::Function *> FunctionIdToPtr;
     llvm::DenseMap<llvm::APInt, llvm::SmallVector<llvm::BasicBlock*, 16>,
         llvm::DenseMapAPIntKeyInfo> Paths;
 
@@ -51,6 +51,7 @@ struct EPPDecode : public llvm::ModulePass {
     }
 
     virtual bool runOnModule(llvm::Module &m) override;
+    bool doInitialization(llvm::Module &m) override;
 
     std::pair<PathType, std::vector<llvm::BasicBlock *>>
     decode(llvm::Function &f, llvm::APInt pathID, EPPEncode &E);

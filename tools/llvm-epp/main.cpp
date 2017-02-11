@@ -66,9 +66,9 @@ cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
                         cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory));
 
 
-cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
-                                   cl::desc("List of functions to instrument"),
-                                   cl::OneOrMore, cl::CommaSeparated);
+//cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
+                                   //cl::desc("List of functions to instrument"),
+                                   //cl::OneOrMore, cl::CommaSeparated);
 
 cl::opt<bool> printSrcLines("src", cl::desc("Print Source Line Numbers"),
                             cl::init(false));

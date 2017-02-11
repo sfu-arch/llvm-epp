@@ -24,8 +24,9 @@ void EPP(logPath2)(__int128 Val, uint32_t FunctionId) {
 
 void EPP(save)() {
     FILE *fp = fopen("path-profile-results.txt", "w");
-    for (auto &FV : EPP(path)) {
-        fprintf(fp, "%lu\n", FV.size());
+    for (uint32_t I = 0; I < EPP(path).size(); I++ ) {
+        auto &FV = EPP(path)[I];
+        fprintf(fp, "%u %lu\n", I, FV.size());
         for (auto &KV : FV) {
             uint64_t low  = (uint64_t)KV.first;
             uint64_t high = (KV.first >> 64);
