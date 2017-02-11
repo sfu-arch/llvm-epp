@@ -106,24 +106,6 @@ bool EPPDecode::runOnModule(Module &M) {
         for (uint32_t I = 0; I < paths.size(); I++) {
             auto &path = paths[I];
             auto pType = path.blocks.first;
-            //int start = 0, end = 0;
-            //// Replace this with bitmask
-            //switch (pType) {
-                //case RIRO:
-                    //break;
-                //case FIRO:
-                    //start = 1;
-                    //break;
-                //case RIFO:
-                    //end = 1;
-                    //break;
-                //case FIFO:
-                    //start = 1;
-                    //end   = 1;
-                    //break;
-            //}
-            //assert(start == bool(pType & 0x1) && "Funky");
-            //assert(end == bool(pType & 0x2) && "Funky");
             auto blocks = SetVector<BasicBlock*>(path.blocks.second.begin() + bool(pType & 0x1),
                     path.blocks.second.end() - bool(pType & 0x2));
             printPathSrc(blocks, errs());
