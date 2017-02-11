@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <sstream>
 
-//#include "Common.h"
 #include "EPPDecode.h"
 
 using namespace llvm;
@@ -99,76 +98,43 @@ bool EPPDecode::runOnModule(Module &M) {
         // Sort the paths in descending order of their frequency
         // If the frequency is same, descending order of id (id cannot be same)
         sort(paths.begin(), paths.end(), [](const Path &P1, const Path &P2) {
-            return (P1.count > P2.count) ||
-                   (P1.count == P2.count && P1.id.uge(P2.id));
-        });
+                return (P1.count > P2.count) ||
+                (P1.count == P2.count && P1.id.uge(P2.id));
+                });
+
+        
+        for (uint32_t I = 0; I < paths.size(); I++) {
+            auto &path = paths[I];
+            auto pType = path.blocks.first;
+            //int start = 0, end = 0;
+            //// Replace this with bitmask
+            //switch (pType) {
+                //case RIRO:
+                    //break;
+                //case FIRO:
+                    //start = 1;
+                    //break;
+                //case RIFO:
+                    //end = 1;
+                    //break;
+                //case FIFO:
+                    //start = 1;
+                    //end   = 1;
+                    //break;
+            //}
+            //assert(start == bool(pType & 0x1) && "Funky");
+            //assert(end == bool(pType & 0x2) && "Funky");
+            auto blocks = SetVector<BasicBlock*>(path.blocks.second.begin() + bool(pType & 0x1),
+                    path.blocks.second.end() - bool(pType & 0x2));
+            printPathSrc(blocks, errs());
+        }       
+
 
     }
 
     InFile.close();
     return false;
 
-    /*******
-
-    uint64_t totalPathCount;
-    inFile >> totalPathCount;
-    vector<Path> paths;
-    paths.reserve(totalPathCount);
-
-    EPPEncode *Enc = nullptr;
-    for (auto &F : M) {
-        if (!F.isDeclaration()) {
-            Enc = &getAnalysis<EPPEncode>(F);
-            vector<uint64_t> counts(totalPathCount, 0);
-            string PathIdStr;
-            uint64_t PathCount;
-            while (inFile >> PathIdStr >> PathCount) {
-                APInt PathId(128, StringRef(PathIdStr), 16);
-                paths.push_back({&F, PathId, PathCount});
-            }
-        }
-    }
-    inFile.close();
-
-    for (auto &path : paths) {
-        path.blocks = decode(*path.Func, path.id, *Enc);
-    }
-
-    // Sort the paths in descending order of their frequency
-    // If the frequency is same, descending order of id (id cannot be same)
-    sort(paths.begin(), paths.end(), [](const Path &P1, const Path &P2) {
-        return (P1.count > P2.count) ||
-               (P1.count == P2.count && P1.id.uge(P2.id));
-    });
-
-    //ofstream Outfile("epp-sequences.txt", ios::out);
-
-    uint64_t pathFail = 0;
-    // Dump paths
-    for (auto &path : paths) {
-        auto pType = path.blocks.first;
-        int start = 0, end = 0;
-        switch (pType) {
-        case RIRO:
-            break;
-        case FIRO:
-            start = 1;
-            break;
-        case RIFO:
-            end = 1;
-            break;
-        case FIFO:
-            start = 1;
-            end   = 1;
-            break;
-        }
-        
-        Paths.insert(make_pair(path.id, SmallVector<BasicBlock*,16>(path.blocks.second.begin() + start, path.blocks.second.end() - end)));
-    }
-
-
-    return false;
-    *****/
 }
 
 pair<PathType, vector<llvm::BasicBlock *>>
@@ -191,7 +157,7 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
             auto EWt = ACFG[{Position, Tgt}];
             DEBUG(errs() << "\t" << Tgt->getName() << " [" << EWt << "]\n");
             if (ACFG[{Position, Tgt}].uge(Wt) &&
-                ACFG[{Position, Tgt}].ule(pathID)) {
+                    ACFG[{Position, Tgt}].ule(pathID)) {
                 Select = {Position, Tgt};
                 Wt     = ACFG[{Position, Tgt}];
             }
