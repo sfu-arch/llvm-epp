@@ -43,9 +43,12 @@ bool EPPProfile::runOnModule(Module &module) {
     DEBUG(errs() << "Running Profile\n");
     auto &Ctx = module.getContext();
 
+    errs() << "# Instrumented Functions";
+
     uint32_t NumberOfFunctions = 0;
     for (auto &func : module) {
         if(!func.isDeclaration()) {
+            errs() << "- name: " << func.getName() << "\n";
             LI = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
             auto &enc = getAnalysis<EPPEncode>(func);
             instrument(func, enc);

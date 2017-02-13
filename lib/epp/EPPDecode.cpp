@@ -87,11 +87,13 @@ bool EPPDecode::runOnModule(Module &M) {
         vector<Path> paths;
         paths.reserve(NumberOfPaths);
         Function *FPtr = FunctionIdToPtr[FunctionId];
+
+        errs() << "- name: " << FPtr->getName() << "\n";
+
         EPPEncode *Enc = nullptr;
         Enc = &getAnalysis<EPPEncode>(*FPtr);
 
-        errs() << "- name: " << FPtr->getName() << "\n"
-               << "  num_exec_paths: " << NumberOfPaths << "\n";
+        errs() << "  num_exec_paths: " << NumberOfPaths << "\n";
 
         for(uint32_t I = 0; I < NumberOfPaths; I++) {
             getline(InFile, Line);

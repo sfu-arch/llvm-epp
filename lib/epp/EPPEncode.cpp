@@ -206,7 +206,7 @@ void EPPEncode::encode(Function &F) {
     }
 #endif
 
-    errs() << "NumPaths : " << numPaths[Entry] << "\n";
+    errs() << "  num_paths: " << numPaths[Entry] << "\n";
 }
 
 char EPPEncode::ID = 0;
