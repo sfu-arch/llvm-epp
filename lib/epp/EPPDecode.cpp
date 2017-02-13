@@ -7,6 +7,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/ADT/SmallString.h"
 #include <fstream>
 
 #include <unordered_map>
@@ -44,7 +45,7 @@ bool EPPDecode::doInitialization(Module &M) {
 }
 
 
-void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out) {
+void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out, SmallString<8> prefix) {
     unsigned line = 0;
     llvm::StringRef file;
     for (auto *bb : blocks) {
@@ -57,7 +58,8 @@ void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out) {
             if (Loc->getLine() != line || Loc->getFilename() != file) {
                 line = Loc->getLine();
                 file = Loc->getFilename();
-                out << "File " << file.str() << " line " << line << "\n";
+                out << prefix << "- " << file.str() 
+                    << "," << line << "\n";
             }
         }
     }
@@ -67,6 +69,8 @@ void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out) {
 bool EPPDecode::runOnModule(Module &M) {
     ifstream InFile(profile.c_str(), ios::in);
     assert(InFile.is_open() && "Could not open file for reading");
+
+    errs() << "# Decoded Paths\n";
 
     string Line;
     while (getline(InFile, Line)) { 
@@ -79,17 +83,22 @@ bool EPPDecode::runOnModule(Module &M) {
             report_fatal_error("Invalid profile format");
         }
 
+
         vector<Path> paths;
         paths.reserve(NumberOfPaths);
         Function *FPtr = FunctionIdToPtr[FunctionId];
         EPPEncode *Enc = nullptr;
         Enc = &getAnalysis<EPPEncode>(*FPtr);
 
+        errs() << "- name: " << FPtr->getName() << "\n"
+               << "  num_exec_paths: " << NumberOfPaths << "\n";
+
         for(uint32_t I = 0; I < NumberOfPaths; I++) {
             getline(InFile, Line);
             stringstream SS(Line);
             string PathIdStr;
             uint64_t PathCount;
+            SS >> PathIdStr >> PathCount;
             APInt PathId(128, StringRef(PathIdStr), 16);
             paths.push_back({FPtr, PathId, PathCount});
             paths.back().blocks = decode(*FPtr, PathId, *Enc);
@@ -108,7 +117,10 @@ bool EPPDecode::runOnModule(Module &M) {
             auto pType = path.blocks.first;
             auto blocks = SetVector<BasicBlock*>(path.blocks.second.begin() + bool(pType & 0x1),
                     path.blocks.second.end() - bool(pType & 0x2));
-            printPathSrc(blocks, errs());
+            SmallString<16> PathId;
+            path.id.toStringSigned(PathId, 16);
+            errs() << "  - path: " << PathId << "\n";
+            printPathSrc(blocks, errs(), StringRef("      "));
         }       
 
 
