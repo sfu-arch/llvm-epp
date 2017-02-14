@@ -11,11 +11,10 @@ Efficient Path Profiling using LLVM
 
 ### From Source 
 
-1.  
-    wget http://llvm.org/releases/3.8.1/llvm-3.8.1.src.tar.xz \  
+1.  `wget http://llvm.org/releases/3.8.1/llvm-3.8.1.src.tar.xz \  
     http://llvm.org/releases/3.8.1/cfe-3.8.1.src.tar.xz \  
     && tar xf llvm-3.8.1.src.tar.xz && tar xf cfe-3.8.1.src.tar.xz \  
-    && mv cfe-3.8.1.src llvm-3.8.1.src/tools/clang
+    && mv cfe-3.8.1.src llvm-3.8.1.src/tools/clang`
 
 2. `mkdir llvm-build && cd llvm-build`
 3. `cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_INSTALL_UTILS=ON ../llvm-3.8.1.src && make -j 8`
@@ -29,21 +28,19 @@ Efficient Path Profiling using LLVM
 
 ## Test
 
-1. `lit ` 
+1. `lit` 
 
 ## Usage
 
 1. `clang -c -g -emit-llvm prog.c`
-2. `llvm-epp -epp-fn=main prog.bc -o prog`
+2. `llvm-epp prog.bc -o prog`
 3. `clang prog.epp.bc -o exe`
 4. `./exe`
 5. `llvm-epp -p=path-profile-results.txt prog.bc`
 
 ## To Do
 
-1. Multiple function support
-2. Multithread support
-
+1. Multi-thread support
 
 ## License 
 

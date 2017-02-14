@@ -59,8 +59,8 @@ cl::OptionCategory LLVMEppOptionCategory("EPP Options","Additional options for t
 cl::opt<string> inPath(cl::Positional, cl::desc("<Module to analyze>"),
                        cl::value_desc("bitcode filename"), cl::Required, cl::cat(LLVMEppOptionCategory));
 
-cl::opt<string> outFile("o", cl::desc("Filename of the instrumented bitcode"),
-                        cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory));
+cl::opt<string> profileOutputFilename("o", cl::desc("Filename of the output path profile"),
+                        cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory), cl::init("path-profile-results.txt"));
 
 cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
                         cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory));
@@ -86,8 +86,7 @@ void saveModule(Module &m, StringRef filename) {
 }
 
 
-static void instrumentModule(Module &module, std::string outFile,
-                             const char *argv0) {
+static void instrumentModule(Module &module) {
     // Build up all of the passes that we want to run on the module.
     legacy::PassManager pm;
     pm.add(new llvm::AssumptionCacheTracker());
@@ -96,13 +95,20 @@ static void instrumentModule(Module &module, std::string outFile,
     pm.add(createTypeBasedAAWrapperPass());
     pm.add(new llvm::CallGraphWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
-    //pm.add(new epp::Namer());
     pm.add(new LoopInfoWrapperPass());
     pm.add(new epp::EPPProfile());
     pm.add(createVerifierPass());
     pm.run(module);
 
-    saveModule(module, outFile + ".epp.bc");
+    auto replaceExt = [](string& s, const string& newExt) {
+       string::size_type i = s.rfind('.', s.length());
+       if (i != string::npos) {
+          s.replace(i+1, newExt.length(), newExt);
+       }
+    };
+
+    replaceExt(inPath, "epp.bc");
+    saveModule(module, inPath);
 }
 
 static void interpretResults(Module &module, std::string filename) {
@@ -150,12 +156,9 @@ int main(int argc, char **argv, const char **env) {
 
     if (!profile.empty()) {
         interpretResults(*module, profile);
-    } else if (!outFile.empty()) {
-        instrumentModule(*module, outFile, argv[0]);
-    } else {
-        errs() << "Neither -o nor -p were selected!\n";
-        return -1;
-    }
+    } else { 
+        instrumentModule(*module);
+    } 
 
     return 0;
 }

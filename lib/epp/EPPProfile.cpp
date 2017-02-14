@@ -24,6 +24,7 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
+extern cl::opt<string> profileOutputFilename;
 
 bool EPPProfile::doInitialization(Module &M) {
     uint32_t Id = 0;
@@ -39,11 +40,13 @@ bool EPPProfile::doFinalization(Module &M) {
 }
 
 
+
+
 bool EPPProfile::runOnModule(Module &module) {
     DEBUG(errs() << "Running Profile\n");
     auto &Ctx = module.getContext();
 
-    errs() << "# Instrumented Functions";
+    errs() << "# Instrumented Functions\n";
 
     uint32_t NumberOfFunctions = 0;
     for (auto &func : module) {
@@ -58,22 +61,32 @@ bool EPPProfile::runOnModule(Module &module) {
 
     auto *voidTy = Type::getVoidTy(Ctx);
     auto *int32Ty = Type::getInt32Ty(Ctx);
+    auto *int8PtrTy = Type::getInt8PtrTy(Ctx, 0);
+    auto *int8Ty = Type::getInt8Ty(Ctx);
+    auto *Zero = ConstantInt::get(int32Ty, 0, false);
 
     // Add Global Constructor for initializing path profiling 
     auto * EPPInitCtor =
-        llvm::cast<Function>(module.getOrInsertFunction("__epp_init", voidTy, nullptr));
+        llvm::cast<Function>(module.getOrInsertFunction("__epp_ctor", voidTy, nullptr));
     auto * EPPInit =
         llvm::cast<Function>(module.getOrInsertFunction("PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
     auto * CtorBB = BasicBlock::Create(Ctx, "entry", EPPInitCtor); 
     auto * Arg = ConstantInt::get(int32Ty, NumberOfFunctions, false);
-    auto * CI = CallInst::Create(EPPInit, {Arg}, "", CtorBB);
+    CallInst::Create(EPPInit, {Arg}, "", CtorBB);
     ReturnInst::Create(Ctx, CtorBB);
     appendToGlobalCtors(module, EPPInitCtor, 0);
 
     // Add global destructor to dump out results
-    auto *printer =
-        module.getOrInsertFunction("PaThPrOfIlInG_save", voidTy, nullptr);
-    appendToGlobalDtors(module, llvm::cast<Function>(printer), 0);
+    auto * EPPSaveDtor =
+        llvm::cast<Function>(module.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
+    auto * EPPSave =
+        llvm::cast<Function>(module.getOrInsertFunction("PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
+    auto * DtorBB = BasicBlock::Create(Ctx, "entry", EPPSaveDtor); 
+    IRBuilder<> Builder(DtorBB);
+    Builder.CreateCall(EPPSave, {Builder.CreateGlobalStringPtr(profileOutputFilename.getValue())});
+    Builder.CreateRet(nullptr);
+
+    appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), 0);
 
     return true;
 }
