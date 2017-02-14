@@ -4,9 +4,9 @@
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/Analysis/CFG.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
-#include "llvm/Analysis/CFG.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
@@ -86,8 +86,6 @@ vector<BasicBlock *> postOrder(const Loop *loop,
     loopPostorderHelper(loop->getHeader(), loop, ordered, seen, SCCBlocks);
     return ordered;
 }
-
-
 
 vector<BasicBlock *> postOrder(Function &F, LoopInfo *LI) {
     vector<BasicBlock *> PostOrderBlocks;
@@ -173,8 +171,8 @@ void EPPEncode::encode(Function &F) {
 
     // If the function has only one basic block, then there are no edges added.
     // Handle this case separately by telling the AltCFG structure.
-    
-    if(Entry == Exit) {
+
+    if (Entry == Exit) {
         ACFG.add(Entry);
     }
 
@@ -183,7 +181,7 @@ void EPPEncode::encode(Function &F) {
 
         if (isFunctionExiting(B))
             pathCount = 1;
-        
+
         for (auto &S : ACFG.succs(B)) {
             ACFG[{B, S}] = pathCount;
             if (numPaths.count(S) == 0)

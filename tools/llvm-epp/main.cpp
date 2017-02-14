@@ -2,6 +2,7 @@
 #include "llvm/ADT/SmallString.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/Analysis/CallGraph.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/AsmParser/Parser.h"
@@ -13,7 +14,6 @@
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/LegacyPassManager.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Analysis/CallGraph.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
@@ -54,27 +54,31 @@ using namespace llvm;
 using namespace llvm::sys;
 using namespace epp;
 
-cl::OptionCategory LLVMEppOptionCategory("EPP Options","Additional options for the EPP tool");
+cl::OptionCategory LLVMEppOptionCategory("EPP Options",
+                                         "Additional options for the EPP tool");
 
 cl::opt<string> inPath(cl::Positional, cl::desc("<Module to analyze>"),
-                       cl::value_desc("bitcode filename"), cl::Required, cl::cat(LLVMEppOptionCategory));
+                       cl::value_desc("bitcode filename"), cl::Required,
+                       cl::cat(LLVMEppOptionCategory));
 
-cl::opt<string> profileOutputFilename("o", cl::desc("Filename of the output path profile"),
-                        cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory), cl::init("path-profile-results.txt"));
+cl::opt<string>
+    profileOutputFilename("o", cl::desc("Filename of the output path profile"),
+                          cl::value_desc("filename"),
+                          cl::cat(LLVMEppOptionCategory),
+                          cl::init("path-profile-results.txt"));
 
 cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
-                        cl::value_desc("filename"), cl::cat(LLVMEppOptionCategory));
+                        cl::value_desc("filename"),
+                        cl::cat(LLVMEppOptionCategory));
 
-
-//cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
-                                   //cl::desc("List of functions to instrument"),
-                                   //cl::OneOrMore, cl::CommaSeparated);
+// cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
+// cl::desc("List of functions to instrument"),
+// cl::OneOrMore, cl::CommaSeparated);
 
 cl::opt<bool> printSrcLines("src", cl::desc("Print Source Line Numbers"),
                             cl::init(false));
 
-static
-void saveModule(Module &m, StringRef filename) {
+static void saveModule(Module &m, StringRef filename) {
     error_code EC;
     raw_fd_ostream out(filename.data(), EC, sys::fs::F_None);
 
@@ -84,7 +88,6 @@ void saveModule(Module &m, StringRef filename) {
     }
     WriteBitcodeToFile(&m, out);
 }
-
 
 static void instrumentModule(Module &module) {
     // Build up all of the passes that we want to run on the module.
@@ -100,11 +103,11 @@ static void instrumentModule(Module &module) {
     pm.add(createVerifierPass());
     pm.run(module);
 
-    auto replaceExt = [](string& s, const string& newExt) {
-       string::size_type i = s.rfind('.', s.length());
-       if (i != string::npos) {
-          s.replace(i+1, newExt.length(), newExt);
-       }
+    auto replaceExt = [](string &s, const string &newExt) {
+        string::size_type i = s.rfind('.', s.length());
+        if (i != string::npos) {
+            s.replace(i + 1, newExt.length(), newExt);
+        }
     };
 
     replaceExt(inPath, "epp.bc");
@@ -153,12 +156,11 @@ int main(int argc, char **argv, const char **env) {
         return -1;
     }
 
-
     if (!profile.empty()) {
         interpretResults(*module, profile);
-    } else { 
+    } else {
         instrumentModule(*module);
-    } 
+    }
 
     return 0;
 }

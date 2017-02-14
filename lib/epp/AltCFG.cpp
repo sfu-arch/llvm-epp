@@ -28,19 +28,16 @@ static APInt dir(const Edge &E, const Edge &F) {
 //      Increment( f ) : = Increment( f ) + Dir(e, f ) * events
 //  fi
 //
-static void dfs(APInt Events, BasicBlock *V, Edge E,
-                         const EdgeListTy &ST, const EdgeListTy &Chords,
-                         EdgeWtMapTy &Val, EdgeWtMapTy &Inc) {
+static void dfs(APInt Events, BasicBlock *V, Edge E, const EdgeListTy &ST,
+                const EdgeListTy &Chords, EdgeWtMapTy &Val, EdgeWtMapTy &Inc) {
     for (auto &F : ST) {
         if (E != F && V == TGT(F))
-            dfs(dir(E, F) * Events + Val[F], SRC(F), F, ST, Chords,
-                         Val, Inc);
+            dfs(dir(E, F) * Events + Val[F], SRC(F), F, ST, Chords, Val, Inc);
     }
 
     for (auto &F : ST) {
         if (E != F && V == SRC(F))
-            dfs(dir(E, F) * Events + Val[F], TGT(F), F, ST, Chords,
-                         Val, Inc);
+            dfs(dir(E, F) * Events + Val[F], TGT(F), F, ST, Chords, Val, Inc);
     }
 
     for (auto &C : Chords) {
@@ -57,8 +54,8 @@ void altcfg::computeIncrement(EdgeWtMapTy &Inc, BasicBlock *Entry,
     for (auto &C : Chords)
         Inc.insert({C, APInt(128, 0, true)});
 
-    dfs(APInt(128, 0, true), Entry, {nullptr, nullptr}, ST, Chords,
-                 Weights, Inc);
+    dfs(APInt(128, 0, true), Entry, {nullptr, nullptr}, ST, Chords, Weights,
+        Inc);
 
     initWt({Exit, Entry});
 
@@ -167,8 +164,7 @@ bool altcfg::add(BasicBlock *Src, BasicBlock *Tgt, BasicBlock *Entry,
 
 SmallVector<BasicBlock *, 4> altcfg::succs(const BasicBlock *B) {
 
-    assert( CFG.count(B)  &&
-            "Block does not exist in CFG");
+    assert(CFG.count(B) && "Block does not exist in CFG");
 
     if (SuccCache.count(B) == 0) {
         SmallVector<BasicBlock *, 4> R;

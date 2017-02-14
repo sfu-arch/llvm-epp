@@ -18,14 +18,14 @@ void EPP(init)(uint32_t NumberOfFunctions) {
     EPP(path).resize(NumberOfFunctions);
 }
 
-void EPP(logPath2)(__int128 Val, uint32_t FunctionId) { 
-    EPP(path)[FunctionId][Val] += 1; 
+void EPP(logPath2)(__int128 Val, uint32_t FunctionId) {
+    EPP(path)[FunctionId][Val] += 1;
 }
 
-void EPP(save)(char* path) {
-    //FILE *fp = fopen("path-profile-results.txt", "w");
+void EPP(save)(char *path) {
+    // FILE *fp = fopen("path-profile-results.txt", "w");
     FILE *fp = fopen(path, "w");
-    for (uint32_t I = 0; I < EPP(path).size(); I++ ) {
+    for (uint32_t I = 0; I < EPP(path).size(); I++) {
         auto &FV = EPP(path)[I];
         fprintf(fp, "%u %lu\n", I, FV.size());
         for (auto &KV : FV) {
@@ -41,15 +41,14 @@ void EPP(save)(char* path) {
 
 #else
 
-
 std::vector<std::map<uint64_t, uint64_t>> EPP(path);
 
 void EPP(init)(uint32_t NumberOfFunctions) {
     EPP(path).resize(NumberOfFunctions);
 }
 
-void EPP(logPath2)(uint64_t Val, uint32_t FunctionId) { 
-    EPP(path)[FunctionId][Val] += 1; 
+void EPP(logPath2)(uint64_t Val, uint32_t FunctionId) {
+    EPP(path)[FunctionId][Val] += 1;
 }
 
 // Update this similar to the 64 bit version

@@ -28,19 +28,14 @@ extern cl::opt<string> profileOutputFilename;
 
 bool EPPProfile::doInitialization(Module &M) {
     uint32_t Id = 0;
-    for(auto &F : M) {
-        FunctionIds[&F] = Id++; 
+    for (auto &F : M) {
+        FunctionIds[&F] = Id++;
     }
 
     return false;
 }
 
-bool EPPProfile::doFinalization(Module &M) { 
-    return false; 
-}
-
-
-
+bool EPPProfile::doFinalization(Module &M) { return false; }
 
 bool EPPProfile::runOnModule(Module &module) {
     DEBUG(errs() << "Running Profile\n");
@@ -50,40 +45,41 @@ bool EPPProfile::runOnModule(Module &module) {
 
     uint32_t NumberOfFunctions = 0;
     for (auto &func : module) {
-        if(!func.isDeclaration()) {
+        if (!func.isDeclaration()) {
             errs() << "- name: " << func.getName() << "\n";
-            LI = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
+            LI        = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
             auto &enc = getAnalysis<EPPEncode>(func);
             instrument(func, enc);
             NumberOfFunctions++;
         }
     }
 
-    auto *voidTy = Type::getVoidTy(Ctx);
-    auto *int32Ty = Type::getInt32Ty(Ctx);
+    auto *voidTy    = Type::getVoidTy(Ctx);
+    auto *int32Ty   = Type::getInt32Ty(Ctx);
     auto *int8PtrTy = Type::getInt8PtrTy(Ctx, 0);
-    auto *int8Ty = Type::getInt8Ty(Ctx);
-    auto *Zero = ConstantInt::get(int32Ty, 0, false);
+    auto *int8Ty    = Type::getInt8Ty(Ctx);
+    auto *Zero      = ConstantInt::get(int32Ty, 0, false);
 
-    // Add Global Constructor for initializing path profiling 
-    auto * EPPInitCtor =
-        llvm::cast<Function>(module.getOrInsertFunction("__epp_ctor", voidTy, nullptr));
-    auto * EPPInit =
-        llvm::cast<Function>(module.getOrInsertFunction("PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
-    auto * CtorBB = BasicBlock::Create(Ctx, "entry", EPPInitCtor); 
-    auto * Arg = ConstantInt::get(int32Ty, NumberOfFunctions, false);
+    // Add Global Constructor for initializing path profiling
+    auto *EPPInitCtor = llvm::cast<Function>(
+        module.getOrInsertFunction("__epp_ctor", voidTy, nullptr));
+    auto *EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
+        "PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
+    auto *CtorBB = BasicBlock::Create(Ctx, "entry", EPPInitCtor);
+    auto *Arg    = ConstantInt::get(int32Ty, NumberOfFunctions, false);
     CallInst::Create(EPPInit, {Arg}, "", CtorBB);
     ReturnInst::Create(Ctx, CtorBB);
     appendToGlobalCtors(module, EPPInitCtor, 0);
 
     // Add global destructor to dump out results
-    auto * EPPSaveDtor =
-        llvm::cast<Function>(module.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
-    auto * EPPSave =
-        llvm::cast<Function>(module.getOrInsertFunction("PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
-    auto * DtorBB = BasicBlock::Create(Ctx, "entry", EPPSaveDtor); 
+    auto *EPPSaveDtor = llvm::cast<Function>(
+        module.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
+    auto *EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
+        "PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
+    auto *DtorBB = BasicBlock::Create(Ctx, "entry", EPPSaveDtor);
     IRBuilder<> Builder(DtorBB);
-    Builder.CreateCall(EPPSave, {Builder.CreateGlobalStringPtr(profileOutputFilename.getValue())});
+    Builder.CreateCall(EPPSave, {Builder.CreateGlobalStringPtr(
+                                    profileOutputFilename.getValue())});
     Builder.CreateRet(nullptr);
 
     appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), 0);
@@ -102,16 +98,16 @@ static SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
 }
 
 void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
-    Module *M    = F.getParent();
-    auto &Ctx    = M->getContext();
-    auto *voidTy = Type::getVoidTy(Ctx);
+    Module *M      = F.getParent();
+    auto &Ctx      = M->getContext();
+    auto *voidTy   = Type::getVoidTy(Ctx);
     auto *FuncIdTy = Type::getInt32Ty(Ctx);
 
     auto FuncId = FunctionIds[&F];
 
-    // 1. Lookup the Function to Function ID mapping here
-    // 2. Create a constant int for the id
-    // 3. Pass the id in the logpath2 function call
+// 1. Lookup the Function to Function ID mapping here
+// 2. Create a constant int for the id
+// 3. Pass the id in the logpath2 function call
 
 #ifndef RT32
     auto *CtrTy = Type::getInt128Ty(Ctx);
@@ -120,8 +116,9 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     auto *CtrTy = Type::getInt64Ty(Ctx);
     auto *Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
 #endif
-    
-    auto *FIdArg = ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
+
+    auto *FIdArg =
+        ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
     auto *logFun2 = M->getOrInsertFunction("PaThPrOfIlInG_logPath2", voidTy,
                                            CtrTy, FuncIdTy, nullptr);
 
@@ -150,11 +147,12 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         }
     };
 
-    auto InsertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap, &FIdArg](BasicBlock *BB) {
-        auto logPos = BB->getTerminator();
-        auto *LI    = new LoadInst(Ctr, "ld.epp.ctr", logPos);
-        vector<Value*> Params = {LI, FIdArg};
-        auto *CI    = CallInst::Create(logFun2, Params, "");
+    auto InsertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap,
+                          &FIdArg](BasicBlock *BB) {
+        auto logPos            = BB->getTerminator();
+        auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
+        vector<Value *> Params = {LI, FIdArg};
+        auto *CI               = CallInst::Create(logFun2, Params, "");
         CI->insertAfter(LI);
         (new StoreInst(Zap, Ctr))->insertAfter(CI);
     };

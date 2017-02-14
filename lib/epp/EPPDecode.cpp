@@ -1,4 +1,5 @@
 #define DEBUG_TYPE "epp_decode"
+#include "llvm/ADT/SmallString.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CallSite.h"
@@ -7,11 +8,10 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
-#include "llvm/ADT/SmallString.h"
 #include <fstream>
 
-#include <unordered_map>
 #include <sstream>
+#include <unordered_map>
 
 #include "EPPDecode.h"
 
@@ -37,15 +37,15 @@ static bool isFunctionExiting(BasicBlock *BB) {
 
 bool EPPDecode::doInitialization(Module &M) {
     uint32_t Id = 0;
-    for(auto &F : M) {
-        FunctionIdToPtr[Id++] = &F; 
+    for (auto &F : M) {
+        FunctionIdToPtr[Id++] = &F;
     }
 
     return false;
 }
 
-
-void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out, SmallString<8> prefix) {
+void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out,
+                  SmallString<8> prefix) {
     unsigned line = 0;
     llvm::StringRef file;
     for (auto *bb : blocks) {
@@ -58,13 +58,11 @@ void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out, Small
             if (Loc->getLine() != line || Loc->getFilename() != file) {
                 line = Loc->getLine();
                 file = Loc->getFilename();
-                out << prefix << "- " << file.str() 
-                    << "," << line << "\n";
+                out << prefix << "- " << file.str() << "," << line << "\n";
             }
         }
     }
 }
-
 
 bool EPPDecode::runOnModule(Module &M) {
     ifstream InFile(profile.c_str(), ios::in);
@@ -73,16 +71,14 @@ bool EPPDecode::runOnModule(Module &M) {
     errs() << "# Decoded Paths\n";
 
     string Line;
-    while (getline(InFile, Line)) { 
+    while (getline(InFile, Line)) {
         uint32_t FunctionId = 0, NumberOfPaths = 0;
         try {
             stringstream SS(Line);
             SS >> FunctionId >> NumberOfPaths;
-        } 
-        catch(exception &E) {
+        } catch (exception &E) {
             report_fatal_error("Invalid profile format");
         }
-
 
         vector<Path> paths;
         paths.reserve(NumberOfPaths);
@@ -91,11 +87,11 @@ bool EPPDecode::runOnModule(Module &M) {
         errs() << "- name: " << FPtr->getName() << "\n";
 
         EPPEncode *Enc = nullptr;
-        Enc = &getAnalysis<EPPEncode>(*FPtr);
+        Enc            = &getAnalysis<EPPEncode>(*FPtr);
 
         errs() << "  num_exec_paths: " << NumberOfPaths << "\n";
 
-        for(uint32_t I = 0; I < NumberOfPaths; I++) {
+        for (uint32_t I = 0; I < NumberOfPaths; I++) {
             getline(InFile, Line);
             stringstream SS(Line);
             string PathIdStr;
@@ -109,28 +105,25 @@ bool EPPDecode::runOnModule(Module &M) {
         // Sort the paths in descending order of their frequency
         // If the frequency is same, descending order of id (id cannot be same)
         sort(paths.begin(), paths.end(), [](const Path &P1, const Path &P2) {
-                return (P1.count > P2.count) ||
-                (P1.count == P2.count && P1.id.uge(P2.id));
-                });
+            return (P1.count > P2.count) ||
+                   (P1.count == P2.count && P1.id.uge(P2.id));
+        });
 
-        
         for (uint32_t I = 0; I < paths.size(); I++) {
-            auto &path = paths[I];
-            auto pType = path.blocks.first;
-            auto blocks = SetVector<BasicBlock*>(path.blocks.second.begin() + bool(pType & 0x1),
-                    path.blocks.second.end() - bool(pType & 0x2));
+            auto &path  = paths[I];
+            auto pType  = path.blocks.first;
+            auto blocks = SetVector<BasicBlock *>(
+                path.blocks.second.begin() + bool(pType & 0x1),
+                path.blocks.second.end() - bool(pType & 0x2));
             SmallString<16> PathId;
             path.id.toStringSigned(PathId, 16);
             errs() << "  - path: " << PathId << "\n";
             printPathSrc(blocks, errs(), StringRef("      "));
-        }       
-
-
+        }
     }
 
     InFile.close();
     return false;
-
 }
 
 pair<PathType, vector<llvm::BasicBlock *>>
@@ -153,7 +146,7 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
             auto EWt = ACFG[{Position, Tgt}];
             DEBUG(errs() << "\t" << Tgt->getName() << " [" << EWt << "]\n");
             if (ACFG[{Position, Tgt}].uge(Wt) &&
-                    ACFG[{Position, Tgt}].ule(pathID)) {
+                ACFG[{Position, Tgt}].ule(pathID)) {
                 Select = {Position, Tgt};
                 Wt     = ACFG[{Position, Tgt}];
             }
