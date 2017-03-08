@@ -86,8 +86,7 @@ bool EPPDecode::runOnModule(Module &M) {
 
         errs() << "- name: " << FPtr->getName() << "\n";
 
-        EPPEncode *Enc = nullptr;
-        Enc            = &getAnalysis<EPPEncode>(*FPtr);
+        EPPEncode *Enc = &getAnalysis<EPPEncode>(*FPtr);
 
         errs() << "  num_exec_paths: " << NumberOfPaths << "\n";
 

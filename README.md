@@ -3,22 +3,13 @@ Efficient Path Profiling using LLVM
 
 [![Build Status](https://travis-ci.org/sfu-arch/llvm-epp.svg?branch=master)](https://travis-ci.org/sfu-arch/llvm-epp)
 
+This tool is still in alpha and under active development. 
+
 ## Requires 
 
 1. LLVM 3.8
 2. llvm-lit 
 3. gcc-5
-
-### From Source 
-
-1.  `wget http://llvm.org/releases/3.8.1/llvm-3.8.1.src.tar.xz \  
-    http://llvm.org/releases/3.8.1/cfe-3.8.1.src.tar.xz \  
-    && tar xf llvm-3.8.1.src.tar.xz && tar xf cfe-3.8.1.src.tar.xz \  
-    && mv cfe-3.8.1.src llvm-3.8.1.src/tools/clang`
-
-2. `mkdir llvm-build && cd llvm-build`
-3. `cmake -DCMAKE_BUILD_TYPE=Release -DLLVM_INSTALL_UTILS=ON ../llvm-3.8.1.src && make -j 8`
-4. `sudo make install` 
 
 ## Build 
 
@@ -28,19 +19,25 @@ Efficient Path Profiling using LLVM
 
 ## Test
 
-1. `lit` 
+To run the tests, install [lit](https://pypi.python.org/pypi/lit) from the python package index. 
+
+1. `pip install lit`
+2. `cd build`
+3. `lit test/srcs`  
 
 ## Usage
 
 1. `clang -c -g -emit-llvm prog.c`
 2. `llvm-epp prog.bc -o prog`
-3. `clang prog.epp.bc -o exe`
+3. `clang prog.epp.bc -o exe`-lepp-rt
 4. `./exe`
 5. `llvm-epp -p=path-profile-results.txt prog.bc`
 
-## To Do
+## Known Issues 
 
-1. Multi-thread support
+1. Multi-thread support  
+2. C++ Exceptions  
+3. Support `setjmp` and `longjmp`
 
 ## License 
 

@@ -33,3 +33,6 @@ if(RT32 OR CMAKE_SIZEOF_VOID_P EQUAL 4)
     set_target_properties(epp-rt-agg PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
     set_target_properties(epp-rt-rle PROPERTIES COMPILE_FLAGS "-m32" LINK_FLAGS "-m32")
 endif()
+
+install(TARGETS epp-rt
+    LIBRARY DESTINATION lib)

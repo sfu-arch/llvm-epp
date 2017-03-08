@@ -49,6 +49,7 @@ bool EPPProfile::runOnModule(Module &module) {
             errs() << "- name: " << func.getName() << "\n";
             LI        = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
             auto &enc = getAnalysis<EPPEncode>(func);
+            errs() << "  num_paths: " << enc.numPaths[&func.getEntryBlock()] << "\n";
             instrument(func, enc);
             NumberOfFunctions++;
         }
