@@ -47,7 +47,6 @@
 #include "EPPDecode.h"
 #include "EPPProfile.h"
 
-//#include "config.h"
 
 using namespace std;
 using namespace llvm;

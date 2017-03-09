@@ -1,7 +1,7 @@
 set(LLVM_USED_LIBS epp-inst)
 
-configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake" 
-               "${CMAKE_CURRENT_BINARY_DIR}/config.h" @ONLY)
+#configure_file("${CMAKE_CURRENT_SOURCE_DIR}/config.h.cmake" 
+               #"${CMAKE_CURRENT_BINARY_DIR}/config.h" @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
 add_executable(llvm-epp

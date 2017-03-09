@@ -29,7 +29,7 @@ To run the tests, install [lit](https://pypi.python.org/pypi/lit) from the pytho
 
 1. `clang -c -g -emit-llvm prog.c`
 2. `llvm-epp prog.bc -o prog`
-3. `clang prog.epp.bc -o exe`-lepp-rt
+3. `clang prog.epp.bc -o exe -lepp-rt`
 4. `./exe`
 5. `llvm-epp -p=path-profile-results.txt prog.bc`
 
