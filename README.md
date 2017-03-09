@@ -25,6 +25,10 @@ To run the tests, install [lit](https://pypi.python.org/pypi/lit) from the pytho
 2. `cd build`
 3. `lit test/srcs`  
 
+## Documentation
+
+To generate documentation, install [graphviz](http://www.graphviz.org/) and [doxygen](http://www.stack.nl/~dimitri/doxygen/). Running `cmake` with these prerequisites will enable the `doc` target for the build system. Running `make doc` will generate html documentation of the classes.  
+
 ## Usage
 
 1. `clang -c -g -emit-llvm prog.c`

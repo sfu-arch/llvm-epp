@@ -8,7 +8,7 @@ set(PACKAGE_BUGREPORT "ska124@sfu.ca")
 
 set(CMAKE_CXX_FLAGS "-fno-rtti -std=c++1y -Werror -Wno-deprecated-declarations")
 option(RT32 "32 bit EPP Runtime" OFF)
-option(TRACE_RUNTIME "Collect Run Length Encoded (RLE) Trace for EPP" OFF)
+#option(TRACE_RUNTIME "Collect Run Length Encoded (RLE) Trace for EPP" OFF)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -43,19 +43,6 @@ link_directories( ${LLVM_LIBRARY_DIRS} )
 add_definitions( ${LLVM_DEFINITIONS} )
 
 
-# Find clang 
-
-#set(CLANG_VERSION_REQ "${LLVM_PACKAGE_VERSION}")
-#find_package(Clang)
-#if(CLANG_FOUND)
-    #if(${CLANG_VERSION} VERSION_EQUAL CLANG_VERSION_REQ) 
-    #else()
-        #message(FATAL_ERROR "Incompatible clang version -- need ${CLANG_VERSION_REQ}, found ${CLANG_VERSION}")
-    #endif()
-#else()
-    #message(FATAL_ERROR "Pasha needs clang ${CLANG_VERSION_REQ} in PATH, Cmake will exit" )
-#endif()
-
 
 # 32 bit runtime
 if(RT32)
@@ -66,29 +53,22 @@ else()
 endif()
 
 
-#function(add_bitcode BC FILES) 
-    #add_custom_command(
-        #OUTPUT ${BC}
-        #COMMAND ${CLANG_EXE} 
-                #-c -g -emit-llvm ${BITCODE_FLAGS}
-                #${FILES}
-                #-o ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}/${BC}
-        #WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-        #DEPENDS ${FILES}
-    #)
-    #add_custom_target(bitcode ALL
-        #DEPENDS ${BC}
-        #COMMENT "Generate bitcode for helpers"
-    #)
-#endfunction(add_bitcode)
-
-# Debug Variable Definition
-
-if(CMAKE_BUILD_TYPE EQUAL "Debug")
-    add_definitions(-DPASHA_DEBUG)
-endif()
 
 find_program(LIT_COMMAND lit)
+
+# Documentation 
+
+find_package(Doxygen)
+if(DOXYGEN_FOUND AND DOXYGEN_DOT_FOUND)
+    message(STATUS "Doxygen found, the `doc` target is available to generate html documentation")
+    configure_file(${CMAKE_SOURCE_DIR}/Doxyfile.in ${CMAKE_BINARY_DIR}/Doxyfile @ONLY)
+    add_custom_target(doc
+        ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Generating API documentation for needle" VERBATIM
+    )
+endif()
+
 
 ############## FINAL PROJECT CONFIG #################
 
