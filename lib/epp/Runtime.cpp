@@ -15,15 +15,15 @@ extern "C" {
 
 std::vector<std::map<__int128, uint64_t>> EPP(path64);
 
-void EPP(init)(uint32_t NumberOfFunctions) {
+void EPP(init64)(uint32_t NumberOfFunctions) {
     EPP(path64).resize(NumberOfFunctions);
 }
 
-void EPP(logPath2)(__int128 Val, uint32_t FunctionId) {
+void EPP(logPath64)(__int128 Val, uint32_t FunctionId) {
     EPP(path64)[FunctionId][Val] += 1;
 }
 
-void EPP(save)(char *path) {
+void EPP(save64)(char *path) {
     // FILE *fp = fopen("path-profile-results.txt", "w");
     FILE *fp = fopen(path, "w");
     for (uint32_t I = 0; I < EPP(path64).size(); I++) {
