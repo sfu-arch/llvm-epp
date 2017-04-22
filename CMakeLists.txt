@@ -7,8 +7,6 @@ set(PACKAGE_STRING "${PACKAGE_NAME} ${PACKAGE_VERSION}")
 set(PACKAGE_BUGREPORT "ska124@sfu.ca")
 
 set(CMAKE_CXX_FLAGS "-fno-rtti -std=c++1y -Werror -Wno-deprecated-declarations")
-option(RT32 "32 bit EPP Runtime" OFF)
-#option(TRACE_RUNTIME "Collect Run Length Encoded (RLE) Trace for EPP" OFF)
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
@@ -42,15 +40,6 @@ include_directories( ${LLVM_INCLUDE_DIRS} )
 link_directories( ${LLVM_LIBRARY_DIRS} )
 add_definitions( ${LLVM_DEFINITIONS} )
 
-
-
-# 32 bit runtime
-if(RT32)
-    message(STATUS "Building 32 bit runtime for EPP")
-    set(BITCODE_FLAGS "-m32")
-else()
-    set(BITCODE_FLAGS "")
-endif()
 
 
 

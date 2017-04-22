@@ -29,6 +29,8 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
+extern cl::opt<bool> wideCounter;
+
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
 
@@ -197,13 +199,10 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-#ifdef RT32
-    if (numPaths[Entry].getLimitedValue() == ~0ULL) {
+    if (numPaths[Entry].getLimitedValue() == ~0ULL && !wideCounter) {
         report_fatal_error(
-            "Numpaths greater than 2^64, recompile in 64-bit mode");
+            "Numpaths greater than 2^64, please use -use-wide-counter option");
     }
-#endif
-
 }
 
 char EPPEncode::ID = 0;

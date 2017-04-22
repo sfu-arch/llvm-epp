@@ -25,6 +25,7 @@ using namespace epp;
 using namespace std;
 
 extern cl::opt<string> profileOutputFilename;
+extern cl::opt<bool> wideCounter;
 
 bool EPPProfile::doInitialization(Module &M) {
     uint32_t Id = 0;
@@ -61,22 +62,35 @@ bool EPPProfile::runOnModule(Module &module) {
     auto *int8Ty    = Type::getInt8Ty(Ctx);
     auto *Zero      = ConstantInt::get(int32Ty, 0, false);
 
+    Function * EPPInit = nullptr, * EPPSave = nullptr;
+
+    if(wideCounter) {
+        EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
+            "PaThPrOfIlInG_init64", voidTy, int32Ty, nullptr));
+        EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
+            "PaThPrOfIlInG_save64", voidTy, int8PtrTy, nullptr));
+    } else {
+        EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
+            "PaThPrOfIlInG_init32", voidTy, int32Ty, nullptr));
+        EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
+            "PaThPrOfIlInG_save32", voidTy, int8PtrTy, nullptr));
+    }
+
+
     // Add Global Constructor for initializing path profiling
     auto *EPPInitCtor = llvm::cast<Function>(
         module.getOrInsertFunction("__epp_ctor", voidTy, nullptr));
-    auto *EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
-        "PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
     auto *CtorBB = BasicBlock::Create(Ctx, "entry", EPPInitCtor);
     auto *Arg    = ConstantInt::get(int32Ty, NumberOfFunctions, false);
     CallInst::Create(EPPInit, {Arg}, "", CtorBB);
     ReturnInst::Create(Ctx, CtorBB);
     appendToGlobalCtors(module, EPPInitCtor, 0);
 
+    errs() << profileOutputFilename.getValue();
+
     // Add global destructor to dump out results
     auto *EPPSaveDtor = llvm::cast<Function>(
         module.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
-    auto *EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
-        "PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
     auto *DtorBB = BasicBlock::Create(Ctx, "entry", EPPSaveDtor);
     IRBuilder<> Builder(DtorBB);
     Builder.CreateCall(EPPSave, {Builder.CreateGlobalStringPtr(
@@ -110,18 +124,29 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 // 2. Create a constant int for the id
 // 3. Pass the id in the logpath2 function call
 
-#ifndef RT32
-    auto *CtrTy = Type::getInt128Ty(Ctx);
-    auto *Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(128, 0, true));
-#else
-    auto *CtrTy = Type::getInt64Ty(Ctx);
-    auto *Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
-#endif
+    Type *CtrTy = nullptr;
+    Constant *Zap = nullptr;
+
+    if(wideCounter) {
+        CtrTy = Type::getInt128Ty(Ctx);
+        Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(128, 0, true));
+    } else {
+        CtrTy = Type::getInt64Ty(Ctx);
+        Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
+    }
+
+    Function * logFun2 = nullptr;
+
+    if(wideCounter) {
+        logFun2 = cast<Function>(M->getOrInsertFunction("PaThPrOfIlInG_logPath64", voidTy,
+                                           CtrTy, FuncIdTy, nullptr));
+    } else {
+        logFun2 = cast<Function>(M->getOrInsertFunction("PaThPrOfIlInG_logPath32", voidTy,
+                                           CtrTy, FuncIdTy, nullptr));
+    }
 
     auto *FIdArg =
         ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
-    auto *logFun2 = M->getOrInsertFunction("PaThPrOfIlInG_logPath2", voidTy,
-                                           CtrTy, FuncIdTy, nullptr);
 
     auto *Ctr = new AllocaInst(CtrTy, nullptr, "epp.ctr",
                                &*F.getEntryBlock().getFirstInsertionPt());
@@ -136,12 +161,15 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
             // Context Counter
             auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
-#ifndef RT32
-            auto *CI = ConstantInt::getIntegerValue(CtrTy, Increment);
-#else
-            auto I64 = APInt(64, Increment.getLimitedValue(), true);
-            auto *CI = ConstantInt::getIntegerValue(CtrTy, I64);
-#endif
+            Constant *CI = nullptr;
+            if(wideCounter) {
+                CI = ConstantInt::getIntegerValue(CtrTy, Increment);
+            }
+            else {
+                auto I64 = APInt(64, Increment.getLimitedValue(), true);
+                CI = ConstantInt::getIntegerValue(CtrTy, I64);
+            }
+
             auto *BI = BinaryOperator::CreateAdd(LI, CI);
             BI->insertAfter(LI);
             (new StoreInst(BI, Ctr))->insertAfter(BI);
