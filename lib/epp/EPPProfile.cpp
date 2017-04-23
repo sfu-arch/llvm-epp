@@ -66,9 +66,9 @@ bool EPPProfile::runOnModule(Module &module) {
 
     if(wideCounter) {
         EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
-            "PaThPrOfIlInG_init64", voidTy, int32Ty, nullptr));
+            "PaThPrOfIlInG_initW", voidTy, int32Ty, nullptr));
         EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
-            "PaThPrOfIlInG_save64", voidTy, int8PtrTy, nullptr));
+            "PaThPrOfIlInG_saveW", voidTy, int8PtrTy, nullptr));
     } else {
         EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
             "PaThPrOfIlInG_init32", voidTy, int32Ty, nullptr));
@@ -138,7 +138,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Function * logFun2 = nullptr;
 
     if(wideCounter) {
-        logFun2 = cast<Function>(M->getOrInsertFunction("PaThPrOfIlInG_logPath64", voidTy,
+        logFun2 = cast<Function>(M->getOrInsertFunction("PaThPrOfIlInG_logPathW", voidTy,
                                            CtrTy, FuncIdTy, nullptr));
     } else {
         logFun2 = cast<Function>(M->getOrInsertFunction("PaThPrOfIlInG_logPath32", voidTy,
