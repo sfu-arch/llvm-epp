@@ -1,8 +1,8 @@
+#include <cinttypes>
 #include <cstdint>
 #include <cstdio>
 #include <map>
 #include <vector>
-#include <cinttypes>
 
 extern "C" {
 
@@ -11,9 +11,8 @@ extern "C" {
 // e.g. EPP(entry) yields PaThPrOfIlInG_entry
 #define EPP(X) PaThPrOfIlInG_##X
 
-
-// We only want to build the wide version of the runtime library, i.e. 
-// support for 128 bit counters on 64 bit machines, __int128t is not 
+// We only want to build the wide version of the runtime library, i.e.
+// support for 128 bit counters on 64 bit machines, __int128t is not
 // defined on 32 bit architectures.
 #ifdef __LP64__
 
@@ -37,7 +36,8 @@ void EPP(saveW)(char *path) {
             uint64_t high = (KV.first >> 64);
             // Print the hex values with a 0x prefix messes up
             // the APInt constructor in the decoder
-            fprintf(fp, "%016" PRIx64 "%016" PRIx64 " %" PRIu64 "\n", high, low, KV.second);
+            fprintf(fp, "%016" PRIx64 "%016" PRIx64 " %" PRIu64 "\n", high, low,
+                    KV.second);
         }
     }
     fclose(fp);
@@ -45,20 +45,20 @@ void EPP(saveW)(char *path) {
 
 #endif
 
-std::vector<std::map<uint64_t, uint64_t>> EPP(path32);
+std::vector<std::map<uint64_t, uint64_t>> EPP(path);
 
-void EPP(init32)(uint32_t NumberOfFunctions) {
-    EPP(path32).resize(NumberOfFunctions);
+void EPP(init)(uint32_t NumberOfFunctions) {
+    EPP(path).resize(NumberOfFunctions);
 }
 
-void EPP(logPath32)(uint64_t Val, uint32_t FunctionId) {
-    EPP(path32)[FunctionId][Val] += 1;
+void EPP(logPath)(uint64_t Val, uint32_t FunctionId) {
+    EPP(path)[FunctionId][Val] += 1;
 }
 
-void EPP(save32)(char *path) {
+void EPP(save)(char *path) {
     FILE *fp = fopen(path, "w");
-    for (uint32_t I = 0; I < EPP(path32).size(); I++) {
-        auto &FV = EPP(path32)[I];
+    for (uint32_t I = 0; I < EPP(path).size(); I++) {
+        auto &FV = EPP(path)[I];
         fprintf(fp, "%u %lu\n", I, FV.size());
         for (auto &KV : FV) {
             // Print the hex values with a 0x prefix messes up
@@ -68,5 +68,4 @@ void EPP(save32)(char *path) {
     }
     fclose(fp);
 }
-
 }

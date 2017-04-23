@@ -22,12 +22,12 @@ using namespace std;
 extern cl::opt<string> profile;
 extern cl::opt<bool> printSrcLines;
 
-struct Path {
-    Function *Func;
-    APInt id;
-    uint64_t count;
-    pair<PathType, vector<BasicBlock *>> blocks;
-};
+//struct Path {
+    //Function *Func;
+    //APInt id;
+    //uint64_t count;
+    //pair<PathType, vector<BasicBlock *>> blocks;
+//};
 
 static bool isFunctionExiting(BasicBlock *BB) {
     if (BB->getTerminator()->getNumSuccessors() == 0)

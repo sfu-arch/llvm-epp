@@ -50,7 +50,8 @@ bool EPPProfile::runOnModule(Module &module) {
             errs() << "- name: " << func.getName() << "\n";
             LI        = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
             auto &enc = getAnalysis<EPPEncode>(func);
-            errs() << "  num_paths: " << enc.numPaths[&func.getEntryBlock()] << "\n";
+            errs() << "  num_paths: " << enc.numPaths[&func.getEntryBlock()]
+                   << "\n";
             instrument(func, enc);
             NumberOfFunctions++;
         }
@@ -62,20 +63,19 @@ bool EPPProfile::runOnModule(Module &module) {
     auto *int8Ty    = Type::getInt8Ty(Ctx);
     auto *Zero      = ConstantInt::get(int32Ty, 0, false);
 
-    Function * EPPInit = nullptr, * EPPSave = nullptr;
+    Function *EPPInit = nullptr, *EPPSave = nullptr;
 
-    if(wideCounter) {
+    if (wideCounter) {
         EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
             "PaThPrOfIlInG_initW", voidTy, int32Ty, nullptr));
         EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
             "PaThPrOfIlInG_saveW", voidTy, int8PtrTy, nullptr));
     } else {
         EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
-            "PaThPrOfIlInG_init32", voidTy, int32Ty, nullptr));
+            "PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
         EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
-            "PaThPrOfIlInG_save32", voidTy, int8PtrTy, nullptr));
+            "PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
     }
-
 
     // Add Global Constructor for initializing path profiling
     auto *EPPInitCtor = llvm::cast<Function>(
@@ -120,14 +120,14 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
     auto FuncId = FunctionIds[&F];
 
-// 1. Lookup the Function to Function ID mapping here
-// 2. Create a constant int for the id
-// 3. Pass the id in the logpath2 function call
+    // 1. Lookup the Function to Function ID mapping here
+    // 2. Create a constant int for the id
+    // 3. Pass the id in the logpath2 function call
 
-    Type *CtrTy = nullptr;
+    Type *CtrTy   = nullptr;
     Constant *Zap = nullptr;
 
-    if(wideCounter) {
+    if (wideCounter) {
         CtrTy = Type::getInt128Ty(Ctx);
         Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(128, 0, true));
     } else {
@@ -135,14 +135,14 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
     }
 
-    Function * logFun2 = nullptr;
+    Function *logFun2 = nullptr;
 
-    if(wideCounter) {
-        logFun2 = cast<Function>(M->getOrInsertFunction("PaThPrOfIlInG_logPathW", voidTy,
-                                           CtrTy, FuncIdTy, nullptr));
+    if (wideCounter) {
+        logFun2 = cast<Function>(M->getOrInsertFunction(
+            "PaThPrOfIlInG_logPathW", voidTy, CtrTy, FuncIdTy, nullptr));
     } else {
-        logFun2 = cast<Function>(M->getOrInsertFunction("PaThPrOfIlInG_logPath32", voidTy,
-                                           CtrTy, FuncIdTy, nullptr));
+        logFun2 = cast<Function>(M->getOrInsertFunction(
+            "PaThPrOfIlInG_logPath", voidTy, CtrTy, FuncIdTy, nullptr));
     }
 
     auto *FIdArg =
@@ -162,12 +162,11 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
             auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
             Constant *CI = nullptr;
-            if(wideCounter) {
+            if (wideCounter) {
                 CI = ConstantInt::getIntegerValue(CtrTy, Increment);
-            }
-            else {
+            } else {
                 auto I64 = APInt(64, Increment.getLimitedValue(), true);
-                CI = ConstantInt::getIntegerValue(CtrTy, I64);
+                CI       = ConstantInt::getIntegerValue(CtrTy, I64);
             }
 
             auto *BI = BinaryOperator::CreateAdd(LI, CI);

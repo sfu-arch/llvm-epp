@@ -4,6 +4,7 @@ add_library(epp-inst
     EPPEncode.cpp
     EPPDecode.cpp
     AltCFG.cpp
+    EPPPathPrinter.cpp
 )
 
 

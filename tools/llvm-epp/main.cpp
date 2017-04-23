@@ -44,9 +44,9 @@
 #include <memory>
 #include <string>
 
-#include "EPPDecode.h"
+//#include "EPPDecode.h"
+#include "EPPPathPrinter.h"
 #include "EPPProfile.h"
-
 
 using namespace std;
 using namespace llvm;
@@ -70,15 +70,11 @@ cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
                         cl::value_desc("filename"),
                         cl::cat(LLVMEppOptionCategory));
 
-cl::opt<bool> wideCounter("use-wide-counter", cl::desc("Use wide (128 bit) counters. Only available on 64 bit systems"), 
-                                cl::value_desc("boolean"), cl::init(false), cl::cat(LLVMEppOptionCategory));
+cl::opt<bool> wideCounter(
+    "use-wide-counter",
+    cl::desc("Use wide (128 bit) counters. Only available on 64 bit systems"),
+    cl::value_desc("boolean"), cl::init(false), cl::cat(LLVMEppOptionCategory));
 
-// cl::list<std::string> FunctionList("epp-fn", cl::value_desc("String"),
-// cl::desc("List of functions to instrument"),
-// cl::OneOrMore, cl::CommaSeparated);
-
-cl::opt<bool> printSrcLines("src", cl::desc("Print Source Line Numbers"),
-                            cl::init(false));
 
 static void saveModule(Module &m, StringRef filename) {
     error_code EC;
@@ -126,7 +122,8 @@ static void interpretResults(Module &module, std::string filename) {
     pm.add(new llvm::CallGraphWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new LoopInfoWrapperPass());
-    pm.add(new epp::EPPDecode());
+    //pm.add(new epp::EPPDecode());
+    pm.add(new epp::EPPPathPrinter());
     pm.add(createVerifierPass());
     pm.run(module);
 }

@@ -36,7 +36,16 @@ struct DenseMapAPIntKeyInfo {
 
 
 namespace epp {
+
 enum PathType { RIRO, FIRO, RIFO, FIFO };
+
+struct Path {
+    Function *Func;
+    APInt id;
+    uint64_t count;
+    pair<PathType, vector<BasicBlock *>> blocks;
+};
+
 struct EPPDecode : public llvm::ModulePass {
     static char ID;
     llvm::StringRef filename;
