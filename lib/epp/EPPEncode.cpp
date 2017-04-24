@@ -201,7 +201,7 @@ void EPPEncode::encode(Function &F) {
 
     if (numPaths[Entry].getLimitedValue() == ~0ULL && !wideCounter) {
         report_fatal_error(
-            "Numpaths greater than 2^64, please use -use-wide-counter option");
+            "Numpaths greater than 2^64, please use -w option for 128 bit counters");
     }
 }
 

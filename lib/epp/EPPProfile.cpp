@@ -268,4 +268,3 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 }
 
 char EPPProfile::ID = 0;
-static RegisterPass<EPPProfile> X("", "EPPProfile");

@@ -11,28 +11,28 @@
 #include <map>
 #include <vector>
 
-namespace llvm {
+//namespace llvm {
 
-struct DenseMapAPIntKeyInfo {
-  static inline APInt getEmptyKey() {
-    APInt V(nullptr, 0);
-    V.VAL = 0;
-    return V;
-  }
-  static inline APInt getTombstoneKey() {
-    APInt V(nullptr, 0);
-    V.VAL = 1;
-    return V;
-  }
-  static unsigned getHashValue(const APInt &Key) {
-    return static_cast<unsigned>(hash_value(Key));
-  }
-  static bool isEqual(const APInt &LHS, const APInt &RHS) {
-    return LHS.getBitWidth() == RHS.getBitWidth() && LHS == RHS;
-  }
-};
+//struct DenseMapAPIntKeyInfo {
+  //static inline APInt getEmptyKey() {
+    //APInt V(nullptr, 0);
+    //V.VAL = 0;
+    //return V;
+  //}
+  //static inline APInt getTombstoneKey() {
+    //APInt V(nullptr, 0);
+    //V.VAL = 1;
+    //return V;
+  //}
+  //static unsigned getHashValue(const APInt &Key) {
+    //return static_cast<unsigned>(hash_value(Key));
+  //}
+  //static bool isEqual(const APInt &LHS, const APInt &RHS) {
+    //return LHS.getBitWidth() == RHS.getBitWidth() && LHS == RHS;
+  //}
+//};
 
-}
+//}
 
 
 namespace epp {
@@ -50,8 +50,9 @@ struct EPPDecode : public llvm::ModulePass {
     static char ID;
     std::string filename;
     llvm::DenseMap<uint32_t, llvm::Function *> FunctionIdToPtr;
-    llvm::DenseMap<llvm::APInt, llvm::SmallVector<llvm::BasicBlock*, 16>,
-        llvm::DenseMapAPIntKeyInfo> Paths;
+    //llvm::DenseMap<llvm::APInt, llvm::SmallVector<llvm::BasicBlock*, 16>,
+        //llvm::DenseMapAPIntKeyInfo> Paths;
+    
 
     EPPDecode(std::string f) : llvm::ModulePass(ID), filename(f) {}
 

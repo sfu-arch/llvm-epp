@@ -20,7 +20,6 @@ using namespace epp;
 using namespace std;
 
 extern cl::opt<string> profile;
-extern cl::opt<bool> printSrcLines;
 
 //struct Path {
     //Function *Func;
@@ -177,4 +176,3 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
 }
 
 char EPPDecode::ID = 0;
-//static RegisterPass<EPPDecode> X("", "EPPDecode");

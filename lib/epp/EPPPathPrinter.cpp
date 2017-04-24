@@ -50,4 +50,3 @@ bool EPPPathPrinter::runOnModule(Module &M) {
 } 
 
 char EPPPathPrinter::ID = 0;
-static RegisterPass<EPPPathPrinter> X("", "EPPPathPrinter");
