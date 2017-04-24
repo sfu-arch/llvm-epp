@@ -40,16 +40,20 @@ namespace epp {
 enum PathType { RIRO, FIRO, RIFO, FIFO };
 
 struct Path {
-    Function *Func;
-    APInt id;
-    uint64_t count;
-    pair<PathType, vector<BasicBlock *>> blocks;
+    //Function *Func;
+    APInt Id;
+    uint64_t Freq;
+    //pair<PathType, vector<BasicBlock *>> blocks;
+    PathType Type;
+    vector<BasicBlock *> Blocks;
 };
 
 struct EPPDecode : public llvm::ModulePass {
     static char ID;
     std::string filename;
-    llvm::DenseMap<uint32_t, llvm::Function *> FunctionIdToPtr;
+
+    llvm::DenseMap<llvm::Function*, llvm::SmallVector<Path, 16>> DecodeCache;
+
     //llvm::DenseMap<llvm::APInt, llvm::SmallVector<llvm::BasicBlock*, 16>,
         //llvm::DenseMapAPIntKeyInfo> Paths;
     
@@ -63,8 +67,12 @@ struct EPPDecode : public llvm::ModulePass {
     virtual bool runOnModule(llvm::Module &m) override;
     bool doInitialization(llvm::Module &m) override;
 
+    llvm::SmallVector<Path, 16> 
+        getPaths(llvm::Function&, EPPEncode&);
+
     std::pair<PathType, std::vector<llvm::BasicBlock *>>
-    decode(llvm::Function &f, llvm::APInt pathID, EPPEncode &E);
+        decode(llvm::Function &f, llvm::APInt pathID, EPPEncode &E);
+
     const char *getPassName() const override { return "EPPDecode"; }
 };
 

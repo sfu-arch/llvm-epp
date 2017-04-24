@@ -19,7 +19,7 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-extern cl::opt<string> profile;
+//extern cl::opt<string> profile;
 
 //struct Path {
     //Function *Func;
@@ -35,11 +35,6 @@ static bool isFunctionExiting(BasicBlock *BB) {
 }
 
 bool EPPDecode::doInitialization(Module &M) {
-    uint32_t Id = 0;
-    for (auto &F : M) {
-        FunctionIdToPtr[Id++] = &F;
-    }
-
     return false;
 }
 
@@ -65,8 +60,51 @@ void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out,
 
 bool EPPDecode::runOnModule(Module &M) {
 
+    DenseMap<uint32_t, Function *> FunctionIdToPtr;
+    uint32_t Id = 0;
+    for (auto &F : M) {
+        FunctionIdToPtr[Id++] = &F;
+    }
+
     ifstream InFile(filename.c_str(), ios::in);
     assert(InFile.is_open() && "Could not open file for reading");
+
+    string Line;
+    while (getline(InFile, Line)) {
+        uint32_t FunctionId = 0, NumberOfPaths = 0;
+        try {
+            stringstream SS(Line);
+            SS >> FunctionId >> NumberOfPaths;
+        } catch (exception &E) {
+            report_fatal_error("Invalid profile format");
+        }
+
+        Function *FPtr = FunctionIdToPtr[FunctionId];
+        assert(FPtr && "Invalid function id in path profile");
+
+        if(DecodeCache.count(FPtr) == 0) {
+            DecodeCache.insert({FPtr, SmallVector<Path,16>()});
+        }
+
+        for (uint32_t I = 0; I < NumberOfPaths; I++) {
+            getline(InFile, Line);
+            stringstream SS(Line);
+            string PathIdStr;
+            uint64_t PathExecFreq;
+            SS >> PathIdStr >> PathExecFreq;
+            APInt PathId(128, StringRef(PathIdStr), 16);
+
+            // Add a path data struct for each path we find in the 
+            // profile. For each struct only initialize the Id and 
+            // Frequency fields. We will lazily initialize the decoded
+            // block vector as required.
+            DecodeCache[FPtr].push_back({PathId, PathExecFreq});
+        }
+    }
+
+    InFile.close();
+
+    /***
 
     errs() << "# Decoded Paths\n";
 
@@ -122,8 +160,26 @@ bool EPPDecode::runOnModule(Module &M) {
     }
 
     InFile.close();
+
+
+    ***/
     return false;
 }
+
+llvm::SmallVector<Path, 16> 
+    EPPDecode::getPaths(llvm::Function& F, EPPEncode& Enc) {
+
+        assert(DecodeCache.count(&F) != 0 && "Function not found!");
+
+        // Return the predecoded paths if they are present in the cache.
+        // The check is based on the fact that there exists at least one block
+        // in the path thus the size of the SmallVector is non-zero. Also
+        // if one path is decoded, then all paths are decoded for a function.
+        if(DecodeCache[&F].front().Blocks.size()) {
+            return DecodeCache[&F];
+        }
+
+} 
 
 pair<PathType, vector<llvm::BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
