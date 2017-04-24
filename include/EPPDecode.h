@@ -48,12 +48,12 @@ struct Path {
 
 struct EPPDecode : public llvm::ModulePass {
     static char ID;
-    llvm::StringRef filename;
+    std::string filename;
     llvm::DenseMap<uint32_t, llvm::Function *> FunctionIdToPtr;
     llvm::DenseMap<llvm::APInt, llvm::SmallVector<llvm::BasicBlock*, 16>,
         llvm::DenseMapAPIntKeyInfo> Paths;
 
-    EPPDecode() : llvm::ModulePass(ID) {}
+    EPPDecode(std::string f) : llvm::ModulePass(ID), filename(f) {}
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override {
         au.addRequired<EPPEncode>();
@@ -64,6 +64,7 @@ struct EPPDecode : public llvm::ModulePass {
 
     std::pair<PathType, std::vector<llvm::BasicBlock *>>
     decode(llvm::Function &f, llvm::APInt pathID, EPPEncode &E);
+    const char *getPassName() const override { return "EPPDecode"; }
 };
 
 

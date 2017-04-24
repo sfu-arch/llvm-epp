@@ -65,7 +65,8 @@ void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out,
 }
 
 bool EPPDecode::runOnModule(Module &M) {
-    ifstream InFile(profile.c_str(), ios::in);
+
+    ifstream InFile(filename.c_str(), ios::in);
     assert(InFile.is_open() && "Could not open file for reading");
 
     errs() << "# Decoded Paths\n";
@@ -176,4 +177,4 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
 }
 
 char EPPDecode::ID = 0;
-static RegisterPass<EPPDecode> X("", "EPPDecode");
+//static RegisterPass<EPPDecode> X("", "EPPDecode");

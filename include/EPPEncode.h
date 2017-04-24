@@ -39,7 +39,7 @@ struct EPPEncode : public llvm::FunctionPass {
     bool doInitialization(llvm::Module &m) override;
     bool doFinalization(llvm::Module &m) override;
     void releaseMemory() override;
-    const char *getPassName() const override { return "PASHA - EPPEncode"; }
+    const char *getPassName() const override { return "EPPEncode"; }
 };
 }
 #endif

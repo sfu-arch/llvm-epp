@@ -71,7 +71,7 @@ cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
                         cl::cat(LLVMEppOptionCategory));
 
 cl::opt<bool> wideCounter(
-    "use-wide-counter",
+    "w",
     cl::desc("Use wide (128 bit) counters. Only available on 64 bit systems"),
     cl::value_desc("boolean"), cl::init(false), cl::cat(LLVMEppOptionCategory));
 
@@ -122,7 +122,7 @@ static void interpretResults(Module &module, std::string filename) {
     pm.add(new llvm::CallGraphWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new LoopInfoWrapperPass());
-    //pm.add(new epp::EPPDecode());
+    pm.add(new epp::EPPDecode(filename));
     pm.add(new epp::EPPPathPrinter());
     pm.add(createVerifierPass());
     pm.run(module);
@@ -156,7 +156,7 @@ int main(int argc, char **argv, const char **env) {
     }
 
     if (!profile.empty()) {
-        interpretResults(*module, profile);
+        interpretResults(*module, profile.getValue());
     } else {
         instrumentModule(*module);
     }
