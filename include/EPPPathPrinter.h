@@ -19,7 +19,8 @@ struct EPPPathPrinter : public llvm::ModulePass {
     EPPPathPrinter() : llvm::ModulePass(ID) {}
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override {
-        //au.addRequired<EPPDecode>();
+        au.addRequired<EPPDecode>();
+        au.addRequired<EPPEncode>();
     }
 
     virtual bool runOnModule(llvm::Module &m) override;

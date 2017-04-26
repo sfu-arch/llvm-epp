@@ -19,16 +19,7 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-//extern cl::opt<string> profile;
-
-//struct Path {
-    //Function *Func;
-    //APInt id;
-    //uint64_t count;
-    //pair<PathType, vector<BasicBlock *>> blocks;
-//};
-
-static bool isFunctionExiting(BasicBlock *BB) {
+static inline bool isFunctionExiting(BasicBlock *BB) {
     if (BB->getTerminator()->getNumSuccessors() == 0)
         return true;
     return false;
@@ -175,10 +166,25 @@ llvm::SmallVector<Path, 16>
         // The check is based on the fact that there exists at least one block
         // in the path thus the size of the SmallVector is non-zero. Also
         // if one path is decoded, then all paths are decoded for a function.
-        if(DecodeCache[&F].front().Blocks.size()) {
-            return DecodeCache[&F];
+        
+        if(DecodeCache[&F].front().Blocks.size() == 0) {
+            for(auto &P : DecodeCache[&F]) {
+                auto R = decode(F, P.Id, Enc);
+                P.Blocks = R.second; 
+                P.Type = R.first;
+            }
         }
 
+        auto &R = DecodeCache[&F];
+
+        // Sort the paths in descending order of their frequency
+        // If the frequency is same, descending order of id (id cannot be same)
+        sort(R.begin(), R.end(), [](const Path &P1, const Path &P2) {
+            return (P1.Freq > P2.Freq) ||
+                   (P1.Freq == P2.Freq && P1.Id.uge(P2.Id));
+        });
+
+        return DecodeCache[&F];
 } 
 
 pair<PathType, vector<llvm::BasicBlock *>>
@@ -228,7 +234,9 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
     }
 #undef SET_BIT
 
-    return make_pair(static_cast<PathType>(Type), Sequence);
+    return  {static_cast<PathType>(Type), 
+        vector<BasicBlock*> (Sequence.begin() + bool(Type & 0x1),
+                            Sequence.end() - bool(Type & 0x2))};
 }
 
 char EPPDecode::ID = 0;
