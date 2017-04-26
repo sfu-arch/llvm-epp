@@ -10,9 +10,6 @@
 #include "llvm/Support/raw_ostream.h"
 #include <fstream>
 
-#include <sstream>
-#include <unordered_map>
-
 #include "EPPDecode.h"
 #include "EPPPathPrinter.h"
 
@@ -20,28 +17,26 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-bool EPPPathPrinter::doInitialization(Module &M) {
-    return false;
-}
+bool EPPPathPrinter::doInitialization(Module &M) { return false; }
 
 void printPathSrc(vector<BasicBlock *> &blocks, raw_ostream &out,
-               SmallString<8> prefix) {
- unsigned line = 0;
- llvm::StringRef file;
- for (auto *bb : blocks) {
-     for (auto &instruction : *bb) {
-         MDNode *n = instruction.getMetadata("dbg");
-         if (!n) {
-             continue;
-         }
-         DebugLoc Loc(n);
-         if (Loc->getLine() != line || Loc->getFilename() != file) {
-             line = Loc->getLine();
-             file = Loc->getFilename();
-             out << prefix << "- " << file.str() << "," << line << "\n";
-         }
-     }
- }
+                  SmallString<8> prefix) {
+    unsigned line = 0;
+    llvm::StringRef file;
+    for (auto *bb : blocks) {
+        for (auto &instruction : *bb) {
+            MDNode *n = instruction.getMetadata("dbg");
+            if (!n) {
+                continue;
+            }
+            DebugLoc Loc(n);
+            if (Loc->getLine() != line || Loc->getFilename() != file) {
+                line = Loc->getLine();
+                file = Loc->getFilename();
+                out << prefix << "- " << file.str() << "," << line << "\n";
+            }
+        }
+    }
 }
 
 bool EPPPathPrinter::runOnModule(Module &M) {
@@ -49,13 +44,13 @@ bool EPPPathPrinter::runOnModule(Module &M) {
 
     errs() << "# Decoded Paths\n";
 
-    for(auto &F : M) {
-        if(!F.isDeclaration()) {
+    for (auto &F : M) {
+        if (!F.isDeclaration()) {
             errs() << "- name: " << F.getName() << "\n";
             EPPEncode &E = getAnalysis<EPPEncode>(F);
-            auto Res = D.getPaths(F, E);
+            auto Res     = D.getPaths(F, E);
             errs() << "  num_exec_paths: " << Res.size() << "\n";
-            for(auto &P : Res) {
+            for (auto &P : Res) {
                 SmallString<16> PathId;
                 P.Id.toStringSigned(PathId, 16);
                 errs() << "  - path: " << PathId << "\n";
@@ -65,6 +60,6 @@ bool EPPPathPrinter::runOnModule(Module &M) {
     }
 
     return false;
-} 
+}
 
 char EPPPathPrinter::ID = 0;

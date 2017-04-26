@@ -11,7 +11,6 @@
 #include <fstream>
 
 #include <sstream>
-#include <unordered_map>
 
 #include "EPPDecode.h"
 
@@ -25,9 +24,7 @@ static inline bool isFunctionExiting(BasicBlock *BB) {
     return false;
 }
 
-bool EPPDecode::doInitialization(Module &M) {
-    return false;
-}
+bool EPPDecode::doInitialization(Module &M) { return false; }
 
 void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out,
                   SmallString<8> prefix) {
@@ -73,8 +70,8 @@ bool EPPDecode::runOnModule(Module &M) {
         Function *FPtr = FunctionIdToPtr[FunctionId];
         assert(FPtr && "Invalid function id in path profile");
 
-        if(DecodeCache.count(FPtr) == 0) {
-            DecodeCache.insert({FPtr, SmallVector<Path,16>()});
+        if (DecodeCache.count(FPtr) == 0) {
+            DecodeCache.insert({FPtr, SmallVector<Path, 16>()});
         }
 
         for (uint32_t I = 0; I < NumberOfPaths; I++) {
@@ -85,8 +82,8 @@ bool EPPDecode::runOnModule(Module &M) {
             SS >> PathIdStr >> PathExecFreq;
             APInt PathId(128, StringRef(PathIdStr), 16);
 
-            // Add a path data struct for each path we find in the 
-            // profile. For each struct only initialize the Id and 
+            // Add a path data struct for each path we find in the
+            // profile. For each struct only initialize the Id and
             // Frequency fields. We will lazily initialize the decoded
             // block vector as required.
             DecodeCache[FPtr].push_back({PathId, PathExecFreq});
@@ -95,97 +92,37 @@ bool EPPDecode::runOnModule(Module &M) {
 
     InFile.close();
 
-    /***
-
-    errs() << "# Decoded Paths\n";
-
-    string Line;
-    while (getline(InFile, Line)) {
-        uint32_t FunctionId = 0, NumberOfPaths = 0;
-        try {
-            stringstream SS(Line);
-            SS >> FunctionId >> NumberOfPaths;
-        } catch (exception &E) {
-            report_fatal_error("Invalid profile format");
-        }
-
-        vector<Path> paths;
-        paths.reserve(NumberOfPaths);
-        Function *FPtr = FunctionIdToPtr[FunctionId];
-
-        errs() << "- name: " << FPtr->getName() << "\n";
-
-        EPPEncode *Enc = &getAnalysis<EPPEncode>(*FPtr);
-
-        errs() << "  num_exec_paths: " << NumberOfPaths << "\n";
-
-        for (uint32_t I = 0; I < NumberOfPaths; I++) {
-            getline(InFile, Line);
-            stringstream SS(Line);
-            string PathIdStr;
-            uint64_t PathCount;
-            SS >> PathIdStr >> PathCount;
-            APInt PathId(128, StringRef(PathIdStr), 16);
-            paths.push_back({FPtr, PathId, PathCount});
-            paths.back().blocks = decode(*FPtr, PathId, *Enc);
-        }
-
-        // Sort the paths in descending order of their frequency
-        // If the frequency is same, descending order of id (id cannot be same)
-        sort(paths.begin(), paths.end(), [](const Path &P1, const Path &P2) {
-            return (P1.count > P2.count) ||
-                   (P1.count == P2.count && P1.id.uge(P2.id));
-        });
-
-        for (uint32_t I = 0; I < paths.size(); I++) {
-            auto &path  = paths[I];
-            auto pType  = path.blocks.first;
-            auto blocks = SetVector<BasicBlock *>(
-                path.blocks.second.begin() + bool(pType & 0x1),
-                path.blocks.second.end() - bool(pType & 0x2));
-            SmallString<16> PathId;
-            path.id.toStringSigned(PathId, 16);
-            errs() << "  - path: " << PathId << "\n";
-            printPathSrc(blocks, errs(), StringRef("      "));
-        }
-    }
-
-    InFile.close();
-
-
-    ***/
     return false;
 }
 
-llvm::SmallVector<Path, 16> 
-    EPPDecode::getPaths(llvm::Function& F, EPPEncode& Enc) {
+llvm::SmallVector<Path, 16> EPPDecode::getPaths(llvm::Function &F,
+                                                EPPEncode &Enc) {
 
-        assert(DecodeCache.count(&F) != 0 && "Function not found!");
+    assert(DecodeCache.count(&F) != 0 && "Function not found!");
 
-        // Return the predecoded paths if they are present in the cache.
-        // The check is based on the fact that there exists at least one block
-        // in the path thus the size of the SmallVector is non-zero. Also
-        // if one path is decoded, then all paths are decoded for a function.
-        
-        if(DecodeCache[&F].front().Blocks.size() == 0) {
-            for(auto &P : DecodeCache[&F]) {
-                auto R = decode(F, P.Id, Enc);
-                P.Blocks = R.second; 
-                P.Type = R.first;
-            }
+    // Return the predecoded paths if they are present in the cache.
+    // The check is based on the fact that there exists at least one block
+    // in the path thus the size of the SmallVector is non-zero. Also
+    // if one path is decoded, then all paths are decoded for a function.
+
+    if (DecodeCache[&F].front().Blocks.size() == 0) {
+        for (auto &P : DecodeCache[&F]) {
+            auto R   = decode(F, P.Id, Enc);
+            P.Blocks = R.second;
+            P.Type   = R.first;
         }
+    }
 
-        auto &R = DecodeCache[&F];
+    auto &R = DecodeCache[&F];
 
-        // Sort the paths in descending order of their frequency
-        // If the frequency is same, descending order of id (id cannot be same)
-        sort(R.begin(), R.end(), [](const Path &P1, const Path &P2) {
-            return (P1.Freq > P2.Freq) ||
-                   (P1.Freq == P2.Freq && P1.Id.uge(P2.Id));
-        });
+    // Sort the paths in descending order of their frequency
+    // If the frequency is same, descending order of id (id cannot be same)
+    sort(R.begin(), R.end(), [](const Path &P1, const Path &P2) {
+        return (P1.Freq > P2.Freq) || (P1.Freq == P2.Freq && P1.Id.uge(P2.Id));
+    });
 
-        return DecodeCache[&F];
-} 
+    return DecodeCache[&F];
+}
 
 pair<PathType, vector<llvm::BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
@@ -234,9 +171,9 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
     }
 #undef SET_BIT
 
-    return  {static_cast<PathType>(Type), 
-        vector<BasicBlock*> (Sequence.begin() + bool(Type & 0x1),
-                            Sequence.end() - bool(Type & 0x2))};
+    return {static_cast<PathType>(Type),
+            vector<BasicBlock *>(Sequence.begin() + bool(Type & 0x1),
+                                 Sequence.end() - bool(Type & 0x2))};
 }
 
 char EPPDecode::ID = 0;

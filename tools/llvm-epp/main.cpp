@@ -75,7 +75,6 @@ cl::opt<bool> wideCounter(
     cl::desc("Use wide (128 bit) counters. Only available on 64 bit systems"),
     cl::value_desc("boolean"), cl::init(false), cl::cat(LLVMEppOptionCategory));
 
-
 static void saveModule(Module &m, StringRef filename) {
     error_code EC;
     raw_fd_ostream out(filename.data(), EC, sys::fs::F_None);
