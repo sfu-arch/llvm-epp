@@ -3,6 +3,9 @@
 #include <cstdio>
 #include <map>
 #include <vector>
+#include <thread>
+#include <mutex>
+
 
 extern uint32_t __epp_numberOfFunctions;
 
@@ -13,46 +16,12 @@ extern "C" {
 // e.g. EPP(entry) yields PaThPrOfIlInG_entry
 #define EPP(X) PaThPrOfIlInG_##X
 
-// We only want to build the wide version of the runtime library, i.e.
-// support for 128 bit counters on 64 bit machines, __int128t is not
-// defined on 32 bit architectures.
-//#ifdef __LP64__
-
-#if 0
-
-std::vector<std::map<__int128, uint64_t>> EPP(pathW);
-
-void EPP(initW)() {
-    EPP(pathW).resize(__epp_numberOfFunctions);
-}
-
-void EPP(logPathW)(__int128 Val, uint32_t FunctionId) {
-    EPP(pathW)[FunctionId][Val] += 1;
-}
-
-void EPP(saveW)(char *path) {
-    FILE *fp = fopen(path, "w");
-    for (uint32_t I = 0; I < EPP(pathW).size(); I++) {
-        auto &FV = EPP(pathW)[I];
-        fprintf(fp, "%u %lu\n", I, FV.size());
-        for (auto &KV : FV) {
-            uint64_t low  = (uint64_t)KV.first;
-            uint64_t high = (KV.first >> 64);
-            // Print the hex values with a 0x prefix messes up
-            // the APInt constructor in the decoder
-            fprintf(fp, "%016" PRIx64 "%016" PRIx64 " %" PRIu64 "\n", high, low,
-                    KV.second);
-        }
-    }
-    fclose(fp);
-}
-
-#endif
-
 std::vector<std::map<uint64_t, uint64_t>> EPP(path_g);
+std::mutex tlsMutex;
 
 class EPP(data) {
     std::vector<std::map<uint64_t, uint64_t>> path;
+    std::thread::id tid;
 
 public:
     void log(uint64_t Val, uint32_t FunctionId) {
@@ -60,10 +29,12 @@ public:
     }
 
     EPP(data)() {
+        tid = std::this_thread::get_id();
         path.resize(__epp_numberOfFunctions);
     }
 
     ~EPP(data)() {
+        std::lock_guard<std::mutex> lock(tlsMutex);
         for (uint32_t I = 0; I < path.size(); I++) {
             auto &FV = path[I];
             for (auto &KV : FV) {

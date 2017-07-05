@@ -25,7 +25,6 @@ using namespace epp;
 using namespace std;
 
 extern cl::opt<string> profileOutputFilename;
-//extern cl::opt<bool> wideCounter;
 
 bool EPPProfile::doInitialization(Module &M) {
     uint32_t Id = 0;
@@ -44,7 +43,8 @@ bool EPPProfile::runOnModule(Module &module) {
 
     errs() << "# Instrumented Functions\n";
 
-    uint32_t NumberOfFunctions = 0;
+    uint32_t NumberOfFunctions = FunctionIds.size();
+
     for (auto &func : module) {
         if (!func.isDeclaration()) {
             errs() << "- name: " << func.getName() << "\n";
@@ -53,7 +53,6 @@ bool EPPProfile::runOnModule(Module &module) {
             errs() << "  num_paths: " << enc.numPaths[&func.getEntryBlock()]
                    << "\n";
             instrument(func, enc);
-            NumberOfFunctions++;
         }
     }
 
@@ -65,17 +64,10 @@ bool EPPProfile::runOnModule(Module &module) {
 
     Function *EPPInit = nullptr, *EPPSave = nullptr;
 
-    //if (wideCounter) {
-        //EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
-            //"PaThPrOfIlInG_initW", voidTy, int32Ty, nullptr));
-        //EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
-            //"PaThPrOfIlInG_saveW", voidTy, int8PtrTy, nullptr));
-    //} else {
-        EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
-            "PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
-        EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
-            "PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
-    //}
+    EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
+        "PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
+    EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
+        "PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
 
     // Add Global Constructor for initializing path profiling
     auto *EPPInitCtor = llvm::cast<Function>(
@@ -132,23 +124,13 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Type *CtrTy   = nullptr;
     Constant *Zap = nullptr;
 
-    //if (wideCounter) {
-        //CtrTy = Type::getInt128Ty(Ctx);
-        //Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(128, 0, true));
-    //} else {
-        CtrTy = Type::getInt64Ty(Ctx);
-        Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
-    //}
+    CtrTy = Type::getInt64Ty(Ctx);
+    Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
 
     Function *logFun2 = nullptr;
 
-    //if (wideCounter) {
-        //logFun2 = cast<Function>(M->getOrInsertFunction(
-            //"PaThPrOfIlInG_logPathW", voidTy, CtrTy, FuncIdTy, nullptr));
-    //} else {
-        logFun2 = cast<Function>(M->getOrInsertFunction(
-            "PaThPrOfIlInG_logPath", voidTy, CtrTy, FuncIdTy, nullptr));
-    //}
+    logFun2 = cast<Function>(M->getOrInsertFunction(
+        "PaThPrOfIlInG_logPath", voidTy, CtrTy, FuncIdTy, nullptr));
 
     auto *FIdArg =
         ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
@@ -167,11 +149,8 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
             auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
             Constant *CI = nullptr;
-            //if (wideCounter) {
-                //CI = ConstantInt::getIntegerValue(CtrTy, Increment);
-            //} else {
-                auto I64 = APInt(64, Increment.getLimitedValue(), true);
-                CI       = ConstantInt::getIntegerValue(CtrTy, I64);
+            auto I64 = APInt(64, Increment.getLimitedValue(), true);
+            CI       = ConstantInt::getIntegerValue(CtrTy, I64);
             //}
 
             auto *BI = BinaryOperator::CreateAdd(LI, CI);

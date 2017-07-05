@@ -28,8 +28,6 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-//extern cl::opt<bool> wideCounter;
-
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
 
