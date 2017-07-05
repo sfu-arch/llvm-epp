@@ -1,5 +1,4 @@
 #define DEBUG_TYPE "epp_encode"
-//#include "Common.h"
 #include "llvm/ADT/MapVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SCCIterator.h"
@@ -29,7 +28,7 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-extern cl::opt<bool> wideCounter;
+//extern cl::opt<bool> wideCounter;
 
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
@@ -199,7 +198,7 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-    if (numPaths[Entry].getLimitedValue() == ~0ULL && !wideCounter) {
+    if (numPaths[Entry].getLimitedValue() == ~0ULL){ // && !wideCounter) {
         report_fatal_error("Numpaths greater than 2^64, please use -w option "
                            "for 128 bit counters");
     }
