@@ -65,9 +65,9 @@ bool EPPProfile::runOnModule(Module &module) {
     Function *EPPInit = nullptr, *EPPSave = nullptr;
 
     EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
-        "PaThPrOfIlInG_init", voidTy, int32Ty, nullptr));
+        "__epp_init", voidTy, int32Ty, nullptr));
     EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
-        "PaThPrOfIlInG_save", voidTy, int8PtrTy, nullptr));
+        "__epp_save", voidTy, int8PtrTy, nullptr));
 
     // Add Global Constructor for initializing path profiling
     auto *EPPInitCtor = llvm::cast<Function>(
@@ -94,7 +94,7 @@ bool EPPProfile::runOnModule(Module &module) {
                                     profileOutputFilename.getValue())});
     Builder.CreateRet(nullptr);
 
-    appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), 0);
+    appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), -655536);
 
     return true;
 }
@@ -130,7 +130,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Function *logFun2 = nullptr;
 
     logFun2 = cast<Function>(M->getOrInsertFunction(
-        "PaThPrOfIlInG_logPath", voidTy, CtrTy, FuncIdTy, nullptr));
+        "__epp_logPath", voidTy, CtrTy, FuncIdTy, nullptr));
 
     auto *FIdArg =
         ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));

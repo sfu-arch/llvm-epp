@@ -40,4 +40,4 @@ int nthreads, tid;
 // RUN: clang -fopenmp -c -g -emit-llvm %s -o %t.bc 
 // RUN: llvm-epp %t.bc -o %t.profile
 // RUN: clang -fopenmp -v %t.epp.bc -o %t-exec -lepp-rt -lpthread 2> %t.compile 
-// RUN: %t-exec > %t.log
+// RUN: OMP_NUM_THREADS=10 %t-exec > %t.log
