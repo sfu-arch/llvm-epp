@@ -39,9 +39,8 @@ To generate documentation, install [graphviz](http://www.graphviz.org/) and [dox
 
 ## Known Issues 
 
-1. Multi-thread support  
-2. C++ Exceptions  
-3. Support `setjmp` and `longjmp`
+1. C++ Exceptions  
+2. Support `setjmp` and `longjmp`
 
 ## License 
 

@@ -15,9 +15,11 @@ void *foo(void *t) {
 
 int main(int argc, char* argv[]) { 
     printf("main: %lu", syscall(__NR_gettid));
-    pthread_t thread;
-    pthread_create(&thread, NULL, foo, NULL);
-    pthread_join(thread, NULL);
+    pthread_t t1, t2;
+    pthread_create(&t1, NULL, foo, NULL);
+    pthread_create(&t2, NULL, foo, NULL);
+    pthread_join(t1, NULL);
+    pthread_join(t2, NULL);
     return 0;
 }
 
