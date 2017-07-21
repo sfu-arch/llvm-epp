@@ -133,9 +133,9 @@ int main(int argc, char **argv, const char **env) {
     // This boilerplate provides convenient stack traces and clean LLVM exit
     // handling. It also initializes the built in support for convenient
     // command line option handling.
-    sys::PrintStackTraceOnErrorSignal();
+    sys::PrintStackTraceOnErrorSignal(argv[0]);
     llvm::PrettyStackTraceProgram X(argc, argv);
-    LLVMContext &context = getGlobalContext();
+    //LLVMContext &context = getGlobalContext();
     llvm_shutdown_obj shutdown;
 
     InitializeAllTargets();
@@ -148,6 +148,7 @@ int main(int argc, char **argv, const char **env) {
 
     // Construct an IR file from the filename passed on the command line.
     SMDiagnostic err;
+    LLVMContext context;
     unique_ptr<Module> module = parseIRFile(inPath.getValue(), err, context);
 
     if (!module.get()) {
