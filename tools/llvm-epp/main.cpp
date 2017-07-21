@@ -87,6 +87,8 @@ static void saveModule(Module &m, StringRef filename) {
 }
 
 static void instrumentModule(Module &module) {
+
+
     // Build up all of the passes that we want to run on the module.
     legacy::PassManager pm;
     pm.add(new llvm::AssumptionCacheTracker());
@@ -100,13 +102,13 @@ static void instrumentModule(Module &module) {
     pm.add(createVerifierPass());
     pm.run(module);
 
+
     auto replaceExt = [](string &s, const string &newExt) {
         string::size_type i = s.rfind('.', s.length());
         if (i != string::npos) {
             s.replace(i + 1, newExt.length(), newExt);
         }
     };
-
     replaceExt(inPath, "epp.bc");
     saveModule(module, inPath);
 }

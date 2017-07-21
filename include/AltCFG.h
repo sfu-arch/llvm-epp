@@ -74,8 +74,16 @@ class CFGInstHelper : public altcfg {
         Inc = getIncrements(B, C);
     }
 
-    InstValTy get(Edge E) const {
+    void print(raw_ostream &os = errs()) {
+        altcfg::print(os);
+        os << "Increments: \n";
+        for(auto X : Inc) {
+            errs() << X.first.first << " " << X.first.second 
+                << " " << X.second << "\n";
+        }
+    }
 
+    InstValTy get(Edge E) const {
         auto getInc = [this](const Edge E) -> APInt {
             if (Inc.count(E))
                 return Inc.lookup(E);
@@ -86,7 +94,12 @@ class CFGInstHelper : public altcfg {
             auto F = SegmentMap.lookup(E);
             return make_tuple(true, getInc(F.first), true, getInc(F.second));
         }
-        return make_tuple(true, getInc(E), false, APInt(128, 0, true));
+
+        auto Increment = getInc(E);
+        return Increment.ne(APInt(128, 0, true)) ? 
+            make_tuple(true, Increment, false, APInt(128, 0, true)) :
+            make_tuple(false, Increment, false, APInt(128, 0, true));
+
     }
 };
 

@@ -8,10 +8,14 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
+#include "llvm/Bitcode/ReaderWriter.h"
+
+#include "llvm/Support/FileSystem.h"
 
 #include "AltCFG.h"
 #include "EPPEncode.h"
@@ -36,6 +40,17 @@ bool EPPProfile::doInitialization(Module &M) {
 }
 
 bool EPPProfile::doFinalization(Module &M) { return false; }
+
+static void saveModule(Module &m, StringRef filename) {
+    error_code EC;
+    raw_fd_ostream out(filename.data(), EC, sys::fs::F_None);
+
+    if (EC) {
+        report_fatal_error("error saving llvm module to '" + filename +
+                           "': \n" + EC.message());
+    }
+    WriteBitcodeToFile(&m, out);
+}
 
 bool EPPProfile::runOnModule(Module &module) {
     DEBUG(errs() << "Running Profile\n");
@@ -83,8 +98,6 @@ bool EPPProfile::runOnModule(Module &module) {
             Number, "__epp_numberOfFunctions");
     
 
-    errs() << profileOutputFilename.getValue();
-
     // Add global destructor to dump out results
     auto *EPPSaveDtor = llvm::cast<Function>(
         module.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
@@ -94,7 +107,9 @@ bool EPPProfile::runOnModule(Module &module) {
                                     profileOutputFilename.getValue())});
     Builder.CreateRet(nullptr);
 
-    appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), -655536);
+    appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), 0);
+
+    saveModule(module, "testing.bc");
 
     return true;
 }
@@ -102,7 +117,7 @@ bool EPPProfile::runOnModule(Module &module) {
 static SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
     SmallVector<BasicBlock *, 1> R;
     for (auto &BB : F) {
-        if (dyn_cast<ReturnInst>(BB.getTerminator())) {
+        if (BB.getTerminator()->getNumSuccessors() == 0) {
             R.push_back(&BB);
         }
     }
@@ -141,7 +156,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     auto *SI = new StoreInst(Zap, Ctr);
     SI->insertAfter(Ctr);
 
-    auto InsertInc = [&Ctr, &CtrTy](Instruction *addPos, APInt Increment) {
+    auto insertInc = [&Ctr, &CtrTy](Instruction *addPos, APInt Increment) {
         if (Increment.ne(APInt(128, 0, true))) {
             DEBUG(errs() << "Inserting Increment " << Increment << " "
                          << addPos->getParent()->getName() << "\n");
@@ -159,9 +174,20 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         }
     };
 
-    auto InsertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap,
+    auto insertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap,
                           &FIdArg](BasicBlock *BB) {
-        auto logPos            = BB->getTerminator();
+
+        Instruction* logPos            = BB->getTerminator();
+
+        // If the terminator is a unreachable inst, then the instruction
+        // prior to it is *most* probably a call instruction which does 
+        // not return. So modify the logPos to point to the instruction
+        // before that one.
+        
+        if(isa<UnreachableInst>(logPos)) {
+            logPos = &*(BasicBlock::iterator(logPos)--);
+        }
+
         auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
         vector<Value *> Params = {LI, FIdArg};
         auto *CI               = CallInst::Create(logFun2, Params, "");
@@ -177,19 +203,10 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         assert(false && "Unreachable");
     };
 
-    auto patchPhis = [&blockIndex](BasicBlock *Src, BasicBlock *Tgt,
-                                   BasicBlock *New) {
-        for (auto &I : *Tgt) {
-            if (auto *Phi = dyn_cast<PHINode>(&I)) {
-                Phi->setIncomingBlock(blockIndex(Phi, Src), New);
-            }
-        }
-    };
-
-    auto interpose = [&Ctx, &patchPhis](BasicBlock *Src,
-                                        BasicBlock *Tgt) -> BasicBlock * {
+    auto interpose = [&Ctx](BasicBlock *Src, BasicBlock *Tgt) -> BasicBlock * {
         DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
                      << "\n");
+
         // Sanity Checks
         auto found = false;
         for (auto S = succ_begin(Src), E = succ_end(Src); S != E; S++)
@@ -199,10 +216,21 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
         auto *F  = Tgt->getParent();
         auto *BB = BasicBlock::Create(Ctx, Src->getName() + ".intp", F);
-        patchPhis(Src, Tgt, BB);
+
         auto *T = Src->getTerminator();
         T->replaceUsesOfWith(Tgt, BB);
+
         BranchInst::Create(Tgt, BB);
+
+        // Hoist all special instructions from the Tgt block 
+        // to the new block. Rewrite the uses of the old instructions
+        // to use the instructions in the new block. 
+       
+        for(auto &I : vector<BasicBlock::iterator>(Tgt->begin(), 
+                    Tgt->getFirstInsertionPt())) {
+            I->moveBefore(BB->getTerminator());
+        }
+
         return BB;
     };
 
@@ -229,17 +257,17 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
     for (auto &E : FunctionEdges) {
         APInt Val1(128, 0, true), Val2(128, 0, true);
-        bool Exists = false, Log = false;
-        tie(Exists, Val1, Log, Val2) = Inst.get(E);
+        bool Exists = false, BackedgeLog = false;
+        tie(Exists, Val1, BackedgeLog, Val2) = Inst.get(E);
 
         if (Exists) {
             auto *Split = interpose(SRC(E), TGT(E));
-            if (Log) {
-                InsertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal);
-                InsertLogPath(Split);
-                InsertInc(Split->getTerminator(), Val2);
+            if (BackedgeLog) {
+                insertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal);
+                insertLogPath(Split);
+                insertInc(Split->getTerminator(), Val2);
             } else {
-                InsertInc(&*Split->getFirstInsertionPt(), Val1);
+                insertInc(&*Split->getFirstInsertionPt(), Val1);
             }
         }
     }
@@ -247,8 +275,9 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     // Add the logpath function for all function exiting
     // basic blocks.
     for (auto &EB : ExitBlocks) {
-        InsertLogPath(EB);
+        insertLogPath(EB);
     }
+
 }
 
 char EPPProfile::ID = 0;

@@ -200,6 +200,7 @@ void EPPEncode::encode(Function &F) {
         report_fatal_error("Numpaths greater than 2^64, please use -w option "
                            "for 128 bit counters");
     }
+
 }
 
 char EPPEncode::ID = 0;

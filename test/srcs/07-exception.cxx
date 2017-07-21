@@ -19,6 +19,6 @@ int main(int argc, char* argv[]) {
 
 // RUN: clang -c -g -emit-llvm %s -o %t.bc 
 // RUN: llvm-epp %t.bc -o %t.profile 2> %t.epp.log
-// RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt 2> %t.compile 
+// RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt -lstdc++ 2> %t.compile 
 // RUN: %t-exec > %t.log
 // XFAIL: *

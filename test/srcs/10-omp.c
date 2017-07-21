@@ -41,3 +41,5 @@ int nthreads, tid;
 // RUN: llvm-epp %t.bc -o %t.profile
 // RUN: clang -fopenmp -v %t.epp.bc -o %t-exec -lepp-rt -lpthread 2> %t.compile 
 // RUN: OMP_NUM_THREADS=10 %t-exec > %t.log
+// RUN: llvm-epp -p=%t.profile %t.bc 2> %t.decode
+// RUN: diff -aub %t.profile %s.pp
