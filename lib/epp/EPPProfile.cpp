@@ -2,6 +2,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/CFG.h"
+#include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CallSite.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -13,7 +14,6 @@
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
-#include "llvm/Bitcode/ReaderWriter.h"
 
 #include "llvm/Support/FileSystem.h"
 
@@ -79,10 +79,10 @@ bool EPPProfile::runOnModule(Module &module) {
 
     Function *EPPInit = nullptr, *EPPSave = nullptr;
 
-    EPPInit = llvm::cast<Function>(module.getOrInsertFunction(
-        "__epp_init", voidTy, int32Ty, nullptr));
-    EPPSave = llvm::cast<Function>(module.getOrInsertFunction(
-        "__epp_save", voidTy, int8PtrTy, nullptr));
+    EPPInit = llvm::cast<Function>(
+        module.getOrInsertFunction("__epp_init", voidTy, int32Ty, nullptr));
+    EPPSave = llvm::cast<Function>(
+        module.getOrInsertFunction("__epp_save", voidTy, int8PtrTy, nullptr));
 
     // Add Global Constructor for initializing path profiling
     auto *EPPInitCtor = llvm::cast<Function>(
@@ -92,11 +92,11 @@ bool EPPProfile::runOnModule(Module &module) {
     CallInst::Create(EPPInit, {Arg}, "", CtorBB);
     ReturnInst::Create(Ctx, CtorBB);
     appendToGlobalCtors(module, EPPInitCtor, 0);
-    
+
     auto *Number = ConstantInt::get(int32Ty, NumberOfFunctions, false);
-    new GlobalVariable(module, Number->getType(), false, GlobalValue::ExternalLinkage,
-            Number, "__epp_numberOfFunctions");
-    
+    new GlobalVariable(module, Number->getType(), false,
+                       GlobalValue::ExternalLinkage, Number,
+                       "__epp_numberOfFunctions");
 
     // Add global destructor to dump out results
     auto *EPPSaveDtor = llvm::cast<Function>(
@@ -144,8 +144,8 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
     Function *logFun2 = nullptr;
 
-    logFun2 = cast<Function>(M->getOrInsertFunction(
-        "__epp_logPath", voidTy, CtrTy, FuncIdTy, nullptr));
+    logFun2 = cast<Function>(M->getOrInsertFunction("__epp_logPath", voidTy,
+                                                    CtrTy, FuncIdTy, nullptr));
 
     auto *FIdArg =
         ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
@@ -164,8 +164,8 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
             auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
             Constant *CI = nullptr;
-            auto I64 = APInt(64, Increment.getLimitedValue(), true);
-            CI       = ConstantInt::getIntegerValue(CtrTy, I64);
+            auto I64     = APInt(64, Increment.getLimitedValue(), true);
+            CI           = ConstantInt::getIntegerValue(CtrTy, I64);
             //}
 
             auto *BI = BinaryOperator::CreateAdd(LI, CI);
@@ -177,17 +177,17 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     auto insertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap,
                           &FIdArg](BasicBlock *BB) {
 
-        Instruction* logPos            = BB->getTerminator();
+        Instruction *logPos = BB->getTerminator();
 
         // If the terminator is a unreachable inst, then the instruction
-        // prior to it is *most* probably a call instruction which does 
+        // prior to it is *most* probably a call instruction which does
         // not return. So modify the logPos to point to the instruction
         // before that one.
-        
-        if(isa<UnreachableInst>(logPos)) {
-            auto Pos = BB->getFirstInsertionPt();
+
+        if (isa<UnreachableInst>(logPos)) {
+            auto Pos  = BB->getFirstInsertionPt();
             auto Next = next(Pos);
-            while(&*Next != BB->getTerminator()) {
+            while (&*Next != BB->getTerminator()) {
                 Pos++, Next++;
             }
             logPos = &*Pos;
@@ -199,7 +199,6 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         CI->insertAfter(LI);
         (new StoreInst(Zap, Ctr))->insertAfter(CI);
     };
-
 
     auto interpose = [&Ctx](BasicBlock *Src, BasicBlock *Tgt) -> BasicBlock * {
         DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
@@ -220,12 +219,12 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
         BranchInst::Create(Tgt, BB);
 
-        // Hoist all special instructions from the Tgt block 
+        // Hoist all special instructions from the Tgt block
         // to the new block. Rewrite the uses of the old instructions
-        // to use the instructions in the new block. 
-       
-        for(auto &I : vector<BasicBlock::iterator>(Tgt->begin(), 
-                    Tgt->getFirstInsertionPt())) {
+        // to use the instructions in the new block.
+
+        for (auto &I : vector<BasicBlock::iterator>(
+                 Tgt->begin(), Tgt->getFirstInsertionPt())) {
             I->moveBefore(BB->getTerminator());
         }
 
@@ -241,7 +240,6 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 #define _ std::ignore
     tie(_, BackVal, _, _) = Inst.get({Exit, Entry});
 #undef _
-
 
     DEBUG(errs() << "BackVal : " << BackVal.toString(10, true) << "\n");
 
@@ -276,7 +274,6 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     for (auto &EB : ExitBlocks) {
         insertLogPath(EB);
     }
-
 }
 
 char EPPProfile::ID = 0;

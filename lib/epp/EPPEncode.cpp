@@ -58,13 +58,16 @@ const Loop *getOutermostLoop(const LoopInfo *LI, const BasicBlock *BB) {
         while (const Loop *Parent = L->getParentLoop())
             L = Parent;
     }
+
+    if (L == nullptr) {
+        assert(L && "getLoopFor returned null");
+    }
     return L;
 }
 
-void loopPostorderHelper(BasicBlock *toVisit, const Loop *loop,
-                         vector<BasicBlock *> &blocks,
-                         DenseSet<BasicBlock *> &seen,
-                         const set<BasicBlock *> &SCCBlocks) {
+void postorderHelper(BasicBlock *toVisit, vector<BasicBlock *> &blocks,
+                     DenseSet<BasicBlock *> &seen,
+                     const set<BasicBlock *> &SCCBlocks) {
     seen.insert(toVisit);
     for (auto s = succ_begin(toVisit), e = succ_end(toVisit); s != e; ++s) {
 
@@ -72,31 +75,84 @@ void loopPostorderHelper(BasicBlock *toVisit, const Loop *loop,
         // will be visited already and will fail the first condition check.
 
         if (!seen.count(*s) && (SCCBlocks.find(*s) != SCCBlocks.end())) {
-            loopPostorderHelper(*s, loop, blocks, seen, SCCBlocks);
+            postorderHelper(*s, blocks, seen, SCCBlocks);
         }
     }
     blocks.push_back(toVisit);
 }
 
-vector<BasicBlock *> postOrder(const Loop *loop,
+vector<BasicBlock *> postOrder(BasicBlock *Block,
                                const set<BasicBlock *> &SCCBlocks) {
     vector<BasicBlock *> ordered;
     DenseSet<BasicBlock *> seen;
-    loopPostorderHelper(loop->getHeader(), loop, ordered, seen, SCCBlocks);
+    postorderHelper(Block, ordered, seen, SCCBlocks);
     return ordered;
 }
 
 vector<BasicBlock *> postOrder(Function &F, LoopInfo *LI) {
     vector<BasicBlock *> PostOrderBlocks;
 
+    // Add all the basicblocks in the function to a set.
+    SetVector<BasicBlock *> BasicBlocks;
+    for (auto &BB : F)
+        BasicBlocks.insert(&BB);
+
     for (auto I = scc_begin(&F), IE = scc_end(&F); I != IE; ++I) {
 
         // Obtain the vector of BBs
         const std::vector<BasicBlock *> &SCCBBs = *I;
 
+        // Find an entry block into the current SCC as the starting point
+        // of the DFS for the postOrder traversal. Now the *entry* block
+        // should have predecessors in other SCC's which are topologically
+        // before this SCC, i.e blocks not seen yet.
+
+        // Remove each basic block which we encounter in the current SCC.
+        // Remaining blocks must be topologically earlier than the blocks
+        // we have seen already.
+        DEBUG(errs() << "SCC: ");
+        for (auto *BB : SCCBBs) {
+            DEBUG(errs() << BB->getName() << " ");
+            BasicBlocks.remove(BB);
+        }
+        DEBUG(errs() << "\n");
+
+        // Find the first block in the current SCC to have a predecessor
+        // in the remaining blocks. This becomes the starting block for the DFS
+        // Exception: SCC size = 1.
+
+        BasicBlock *Start = nullptr;
+
+        for (int i = 0; i < SCCBBs.size() && Start == nullptr; i++) {
+            auto BB = SCCBBs[i];
+            for (auto P = pred_begin(BB), E = pred_end(BB); P != E; P++) {
+                if (BasicBlocks.count(*P)) {
+                    Start = BB;
+                    break;
+                }
+            }
+        }
+
+        if (!Start) {
+            Start = SCCBBs[0];
+            assert(SCCBBs.size() == 1 &&
+                   "Should be entry block only which has no preds");
+        }
+
+        set<BasicBlock *> SCCBlocksSet(SCCBBs.begin(), SCCBBs.end());
+        auto blocks = postOrder(Start, SCCBlocksSet);
+
+        assert(SCCBBs.size() == blocks.size() &&
+               "Could not discover all blocks");
+
+        for (auto *BB : blocks) {
+            PostOrderBlocks.push_back(BB);
+        }
+    }
+
+#if 0
         // Any SCC with more than 1 BB is a loop, however if there is a self
-        // referential
-        // basic block then that will be counted as a loop as well.
+        // referential basic block then that will be counted as a loop as well.
         if (I.hasLoop()) {
             // Since the SCC is a fully connected components,
             // for a loop nest using *any* BB should be sufficient
@@ -123,10 +179,11 @@ vector<BasicBlock *> postOrder(Function &F, LoopInfo *LI) {
         }
     }
 
-    // DEBUG(errs() << "Post Order Blocks: \n");
-    // for (auto &POB : PostOrderBlocks)
-    //     DEBUG(errs() << POB->getName() << " ");
-    // DEBUG(errs() << "\n");
+#endif
+    (errs() << "Post Order Blocks: \n");
+    for (auto &POB : PostOrderBlocks)
+        (errs() << POB->getName() << " ");
+    (errs() << "\n");
 
     return PostOrderBlocks;
 }
@@ -196,11 +253,10 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-    if (numPaths[Entry].getLimitedValue() == ~0ULL){ // && !wideCounter) {
+    if (numPaths[Entry].getLimitedValue() == ~0ULL) { // && !wideCounter) {
         report_fatal_error("Numpaths greater than 2^64, please use -w option "
                            "for 128 bit counters");
     }
-
 }
 
 char EPPEncode::ID = 0;

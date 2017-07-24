@@ -50,7 +50,7 @@ class altcfg {
     EdgeWtMapTy getIncrements(BasicBlock *, BasicBlock *);
 
   public:
-    bool add(const BasicBlock*);
+    bool add(const BasicBlock *);
     bool add(BasicBlock *Src, BasicBlock *Tgt, BasicBlock *Entry = nullptr,
              BasicBlock *Exit = nullptr);
     APInt &operator[](const Edge &);
@@ -77,9 +77,9 @@ class CFGInstHelper : public altcfg {
     void print(raw_ostream &os = errs()) {
         altcfg::print(os);
         os << "Increments: \n";
-        for(auto X : Inc) {
-            errs() << X.first.first << " " << X.first.second 
-                << " " << X.second << "\n";
+        for (auto X : Inc) {
+            errs() << X.first.first << " " << X.first.second << " " << X.second
+                   << "\n";
         }
     }
 
@@ -96,12 +96,10 @@ class CFGInstHelper : public altcfg {
         }
 
         auto Increment = getInc(E);
-        return Increment.ne(APInt(128, 0, true)) ? 
-            make_tuple(true, Increment, false, APInt(128, 0, true)) :
-            make_tuple(false, Increment, false, APInt(128, 0, true));
-
+        return Increment.ne(APInt(128, 0, true))
+                   ? make_tuple(true, Increment, false, APInt(128, 0, true))
+                   : make_tuple(false, Increment, false, APInt(128, 0, true));
     }
 };
-
 }
 #endif

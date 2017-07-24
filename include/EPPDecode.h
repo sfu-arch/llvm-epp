@@ -26,7 +26,7 @@ struct EPPDecode : public llvm::ModulePass {
     static char ID;
     std::string filename;
 
-    llvm::DenseMap<llvm::Function*, llvm::SmallVector<Path, 16>> DecodeCache;
+    llvm::DenseMap<llvm::Function *, llvm::SmallVector<Path, 16>> DecodeCache;
 
     EPPDecode(std::string f) : llvm::ModulePass(ID), filename(f) {}
 
@@ -37,16 +37,13 @@ struct EPPDecode : public llvm::ModulePass {
     virtual bool runOnModule(llvm::Module &m) override;
     bool doInitialization(llvm::Module &m) override;
 
-    llvm::SmallVector<Path, 16> 
-        getPaths(llvm::Function&, EPPEncode&);
+    llvm::SmallVector<Path, 16> getPaths(llvm::Function &, EPPEncode &);
 
     std::pair<PathType, std::vector<llvm::BasicBlock *>>
-        decode(llvm::Function &f, llvm::APInt pathID, EPPEncode &E);
+    decode(llvm::Function &f, llvm::APInt pathID, EPPEncode &E);
 
     const char *getPassName() const override { return "EPPDecode"; }
 };
-
-
 }
 
 #endif

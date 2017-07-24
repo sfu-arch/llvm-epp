@@ -72,8 +72,10 @@ cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
 
 // cl::opt<bool> wideCounter(
 //     "w",
-//     cl::desc("Use wide (128 bit) counters. Only available on 64 bit systems"),
-//     cl::value_desc("boolean"), cl::init(false), cl::cat(LLVMEppOptionCategory));
+//     cl::desc("Use wide (128 bit) counters. Only available on 64 bit
+//     systems"),
+//     cl::value_desc("boolean"), cl::init(false),
+//     cl::cat(LLVMEppOptionCategory));
 
 static void saveModule(Module &m, StringRef filename) {
     error_code EC;
@@ -88,20 +90,17 @@ static void saveModule(Module &m, StringRef filename) {
 
 static void instrumentModule(Module &module) {
 
-
     // Build up all of the passes that we want to run on the module.
     legacy::PassManager pm;
     pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
     pm.add(llvm::createBasicAAWrapperPass());
     pm.add(createTypeBasedAAWrapperPass());
-    pm.add(new llvm::CallGraphWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new LoopInfoWrapperPass());
     pm.add(new epp::EPPProfile());
     pm.add(createVerifierPass());
     pm.run(module);
-
 
     auto replaceExt = [](string &s, const string &newExt) {
         string::size_type i = s.rfind('.', s.length());
@@ -120,7 +119,6 @@ static void interpretResults(Module &module, std::string filename) {
     pm.add(createLoopSimplifyPass());
     pm.add(createBasicAAWrapperPass());
     pm.add(createTypeBasedAAWrapperPass());
-    pm.add(new llvm::CallGraphWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new LoopInfoWrapperPass());
     pm.add(new epp::EPPDecode(filename));
@@ -135,7 +133,7 @@ int main(int argc, char **argv, const char **env) {
     // command line option handling.
     sys::PrintStackTraceOnErrorSignal(argv[0]);
     llvm::PrettyStackTraceProgram X(argc, argv);
-    //LLVMContext &context = getGlobalContext();
+    // LLVMContext &context = getGlobalContext();
     llvm_shutdown_obj shutdown;
 
     InitializeAllTargets();

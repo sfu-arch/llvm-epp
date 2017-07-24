@@ -14,7 +14,8 @@ int main()
     // the table is now initialized
 }
 
-// RUN: clang -fopenmp -c -g -emit-llvm %s -o %t.bc 
+// RUN: clang -fopenmp -c -g -emit-llvm %s -o %t.1.bc 
+// RUN: opt -instnamer %t.1.bc -o %t.bc
 // RUN: llvm-epp %t.bc -o %t.profile
 // RUN: clang -fopenmp -v %t.epp.bc -o %t-exec -lepp-rt -lpthread -lm 2> %t.compile 
 // RUN: %t-exec > %t.log

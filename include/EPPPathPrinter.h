@@ -25,10 +25,7 @@ struct EPPPathPrinter : public llvm::ModulePass {
 
     virtual bool runOnModule(llvm::Module &m) override;
     bool doInitialization(llvm::Module &m) override;
-
 };
-
-
 }
 
 #endif

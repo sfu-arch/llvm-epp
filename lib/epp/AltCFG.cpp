@@ -81,17 +81,18 @@ EdgeListTy altcfg::getChords(EdgeListTy &ST) const {
 EdgeWtMapTy altcfg::getIncrements(BasicBlock *Entry, BasicBlock *Exit) {
 
     // FIXME: The optimized increment optimization only works for CFG with
-    // a single entry and single exit. With functions that have multiple exit points 
+    // a single entry and single exit. With functions that have multiple exit
+    // points
     // the increment computation needs to add edges between each exit to
     // entry. Return the original weight vector for now. Add more robust tests
     // then revisit this issue.
-    
-    //EdgeWtMapTy Inc;
-    //auto ST = getSpanningTree(Entry);
-    //auto C  = getChords(ST);
-    //computeIncrement(Inc, Entry, Exit, C, ST);
-    //return Inc;
-    
+
+    // EdgeWtMapTy Inc;
+    // auto ST = getSpanningTree(Entry);
+    // auto C  = getChords(ST);
+    // computeIncrement(Inc, Entry, Exit, C, ST);
+    // return Inc;
+
     return Weights;
 }
 
@@ -222,5 +223,4 @@ EdgeListTy altcfg::getFakeEdges() const {
     }
     return F;
 }
-
 }
