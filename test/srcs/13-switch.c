@@ -1,8 +1,16 @@
 
+
 int main(int argc, char* argv[]) { 
     for(int i = 0; i < 10; i++) {
-        if(i%2) {
-            printf("This is a loop");
+        switch(i%3) {
+            case 0:
+                printf("case 0");
+                break;
+            case 1:
+                printf("case 1");
+                break;
+            default:
+                printf("case ");
         }
     }
     return 0;

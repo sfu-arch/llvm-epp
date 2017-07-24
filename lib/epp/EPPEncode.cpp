@@ -123,10 +123,10 @@ vector<BasicBlock *> postOrder(Function &F, LoopInfo *LI) {
         }
     }
 
-    DEBUG(errs() << "Post Order Blocks: \n");
-    for (auto &POB : PostOrderBlocks)
-        DEBUG(errs() << POB->getName() << " ");
-    DEBUG(errs() << "\n");
+    // DEBUG(errs() << "Post Order Blocks: \n");
+    // for (auto &POB : PostOrderBlocks)
+    //     DEBUG(errs() << POB->getName() << " ");
+    // DEBUG(errs() << "\n");
 
     return PostOrderBlocks;
 }

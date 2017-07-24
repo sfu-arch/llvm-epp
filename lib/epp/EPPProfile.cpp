@@ -185,7 +185,12 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         // before that one.
         
         if(isa<UnreachableInst>(logPos)) {
-            logPos = &*(BasicBlock::iterator(logPos)--);
+            auto Pos = BB->getFirstInsertionPt();
+            auto Next = next(Pos);
+            while(&*Next != BB->getTerminator()) {
+                Pos++, Next++;
+            }
+            logPos = &*Pos;
         }
 
         auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
@@ -195,13 +200,6 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         (new StoreInst(Zap, Ctr))->insertAfter(CI);
     };
 
-    auto blockIndex = [](const PHINode *Phi, const BasicBlock *BB) -> uint32_t {
-        for (uint32_t I = 0; I < Phi->getNumIncomingValues(); I++) {
-            if (Phi->getIncomingBlock(I) == BB)
-                return I;
-        }
-        assert(false && "Unreachable");
-    };
 
     auto interpose = [&Ctx](BasicBlock *Src, BasicBlock *Tgt) -> BasicBlock * {
         DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
@@ -243,6 +241,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 #define _ std::ignore
     tie(_, BackVal, _, _) = Inst.get({Exit, Entry});
 #undef _
+
 
     DEBUG(errs() << "BackVal : " << BackVal.toString(10, true) << "\n");
 
