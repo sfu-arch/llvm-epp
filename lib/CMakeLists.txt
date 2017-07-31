@@ -1,5 +1,1 @@
 add_subdirectory(epp)
-#add_subdirectory(inliner)
-#add_subdirectory(namer)
-#add_subdirectory(common)
-#add_subdirectory(simplify)

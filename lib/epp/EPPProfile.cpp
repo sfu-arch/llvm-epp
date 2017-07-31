@@ -63,7 +63,6 @@ bool EPPProfile::runOnModule(Module &module) {
     for (auto &func : module) {
         if (!func.isDeclaration()) {
             errs() << "- name: " << func.getName() << "\n";
-            LI        = &getAnalysis<LoopInfoWrapperPass>(func).getLoopInfo();
             auto &enc = getAnalysis<EPPEncode>(func);
             errs() << "  num_paths: " << enc.numPaths[&func.getEntryBlock()]
                    << "\n";
@@ -109,7 +108,7 @@ bool EPPProfile::runOnModule(Module &module) {
 
     appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), 0);
 
-    saveModule(module, "testing.bc");
+    //saveModule(module, "testing.bc");
 
     return true;
 }
@@ -124,6 +123,131 @@ static SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
     return R;
 }
 
+// void EPPProfile::process(Function &F, EPPEncode &Enc) {
+//     Module *M      = F.getParent();
+//     auto &Ctx      = M->getContext();
+//     auto *voidTy   = Type::getVoidTy(Ctx);
+//     auto *FuncIdTy = Type::getInt32Ty(Ctx);
+// 
+//     auto FuncId = FunctionIds[&F];
+// 
+//     // 1. Lookup the Function to Function ID mapping here
+//     // 2. Create a constant int for the id
+//     // 3. Pass the id in the logpath2 function call
+// 
+//     Type *CtrTy   = nullptr;
+//     Constant *Zap = nullptr;
+// 
+//     CtrTy = Type::getInt64Ty(Ctx);
+//     Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
+// 
+//     Function *logFun2 = nullptr;
+// 
+//     logFun2 = cast<Function>(M->getOrInsertFunction("__epp_logPath", voidTy,
+//                                                     CtrTy, FuncIdTy, nullptr));
+// 
+//     auto *FIdArg =
+//         ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
+// 
+//     auto *Ctr = new AllocaInst(CtrTy, nullptr, "epp.ctr",
+//                                &*F.getEntryBlock().getFirstInsertionPt());
+// 
+//     auto *SI = new StoreInst(Zap, Ctr);
+//     SI->insertAfter(Ctr);
+// 
+//     auto insertInc = [&Ctr, &CtrTy](Instruction *addPos, APInt Increment) {
+//         if (Increment.ne(APInt(128, 0, true))) {
+//             DEBUG(errs() << "Inserting Increment " << Increment << " "
+//                          << addPos->getParent()->getName() << "\n");
+//             // Context Counter
+//             auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
+// 
+//             Constant *CI = nullptr;
+//             auto I64     = APInt(64, Increment.getLimitedValue(), true);
+//             CI           = ConstantInt::getIntegerValue(CtrTy, I64);
+//             //}
+// 
+//             auto *BI = BinaryOperator::CreateAdd(LI, CI);
+//             BI->insertAfter(LI);
+//             (new StoreInst(BI, Ctr))->insertAfter(BI);
+//         }
+//     };
+// 
+//     auto insertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap,
+//                           &FIdArg](BasicBlock *BB) {
+// 
+//         Instruction *logPos = BB->getTerminator();
+// 
+//         // If the terminator is a unreachable inst, then the instruction
+//         // prior to it is *most* probably a call instruction which does
+//         // not return. So modify the logPos to point to the instruction
+//         // before that one.
+// 
+//         if (isa<UnreachableInst>(logPos)) {
+//             auto Pos  = BB->getFirstInsertionPt();
+//             auto Next = next(Pos);
+//             while (&*Next != BB->getTerminator()) {
+//                 Pos++, Next++;
+//             }
+//             logPos = &*Pos;
+//         }
+// 
+//         auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
+//         vector<Value *> Params = {LI, FIdArg};
+//         auto *CI               = CallInst::Create(logFun2, Params, "");
+//         CI->insertAfter(LI);
+//         (new StoreInst(Zap, Ctr))->insertAfter(CI);
+//     };
+// 
+//     auto interpose = [&Ctx](BasicBlock *Src, BasicBlock *Tgt) -> BasicBlock * {
+//         DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
+//                      << "\n");
+// 
+//         // Sanity Checks
+//         auto found = false;
+//         for (auto S = succ_begin(Src), E = succ_end(Src); S != E; S++)
+//             if (*S == Tgt)
+//                 found = true;
+//         assert(found && "Could not find the edge to split");
+// 
+//         auto *F  = Tgt->getParent();
+//         auto *BB = BasicBlock::Create(Ctx, Src->getName() + ".intp", F);
+// 
+//         auto *T = Src->getTerminator();
+//         T->replaceUsesOfWith(Tgt, BB);
+// 
+//         BranchInst::Create(Tgt, BB);
+// 
+//         // Hoist all special instructions from the Tgt block
+//         // to the new block. Rewrite the uses of the old instructions
+//         // to use the instructions in the new block.
+// 
+//         for (auto &I : vector<BasicBlock::iterator>(
+//                  Tgt->begin(), Tgt->getFirstInsertionPt())) {
+//             I->moveBefore(BB->getTerminator());
+//         }
+// 
+//         return BB;
+//     };
+// 
+// }
+
+void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
+    if (Increment.ne(APInt(128, 0, true))) {
+        DEBUG(errs() << "Inserting Increment " << Increment << " "
+                     << addPos->getParent()->getName() << "\n");
+        auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
+
+        Constant *CI = nullptr;
+        auto I64     = APInt(64, Increment.getLimitedValue(), true);
+        CI           = ConstantInt::getIntegerValue(Ctr->getAllocatedType(), I64);
+
+        auto *BI = BinaryOperator::CreateAdd(LI, CI);
+        BI->insertAfter(LI);
+        (new StoreInst(BI, Ctr))->insertAfter(BI);
+    }
+}
+
 void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Module *M      = F.getParent();
     auto &Ctx      = M->getContext();
@@ -136,15 +260,10 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     // 2. Create a constant int for the id
     // 3. Pass the id in the logpath2 function call
 
-    Type *CtrTy   = nullptr;
-    Constant *Zap = nullptr;
+    Type *CtrTy = Type::getInt64Ty(Ctx);
+    Constant *Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
 
-    CtrTy = Type::getInt64Ty(Ctx);
-    Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
-
-    Function *logFun2 = nullptr;
-
-    logFun2 = cast<Function>(M->getOrInsertFunction("__epp_logPath", voidTy,
+    Function *logFun2 = cast<Function>(M->getOrInsertFunction("__epp_logPath", voidTy,
                                                     CtrTy, FuncIdTy, nullptr));
 
     auto *FIdArg =
@@ -156,27 +275,11 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     auto *SI = new StoreInst(Zap, Ctr);
     SI->insertAfter(Ctr);
 
-    auto insertInc = [&Ctr, &CtrTy](Instruction *addPos, APInt Increment) {
-        if (Increment.ne(APInt(128, 0, true))) {
-            DEBUG(errs() << "Inserting Increment " << Increment << " "
-                         << addPos->getParent()->getName() << "\n");
-            // Context Counter
-            auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
-
-            Constant *CI = nullptr;
-            auto I64     = APInt(64, Increment.getLimitedValue(), true);
-            CI           = ConstantInt::getIntegerValue(CtrTy, I64);
-            //}
-
-            auto *BI = BinaryOperator::CreateAdd(LI, CI);
-            BI->insertAfter(LI);
-            (new StoreInst(BI, Ctr))->insertAfter(BI);
-        }
-    };
-
-    auto insertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap,
+    
+    auto insertLogPath = [&logFun2, &Ctr, &Zap,
                           &FIdArg](BasicBlock *BB) {
 
+        auto *CtrTy = Ctr->getAllocatedType();
         Instruction *logPos = BB->getTerminator();
 
         // If the terminator is a unreachable inst, then the instruction
@@ -260,11 +363,11 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         if (Exists) {
             auto *Split = interpose(SRC(E), TGT(E));
             if (BackedgeLog) {
-                insertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal);
+                insertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal, Ctr);
                 insertLogPath(Split);
-                insertInc(Split->getTerminator(), Val2);
+                insertInc(Split->getTerminator(), Val2, Ctr);
             } else {
-                insertInc(&*Split->getFirstInsertionPt(), Val1);
+                insertInc(&*Split->getFirstInsertionPt(), Val1, Ctr);
             }
         }
     }

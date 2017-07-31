@@ -44,7 +44,6 @@
 #include <memory>
 #include <string>
 
-//#include "EPPDecode.h"
 #include "EPPPathPrinter.h"
 #include "EPPProfile.h"
 
@@ -133,7 +132,6 @@ int main(int argc, char **argv, const char **env) {
     // command line option handling.
     sys::PrintStackTraceOnErrorSignal(argv[0]);
     llvm::PrettyStackTraceProgram X(argc, argv);
-    // LLVMContext &context = getGlobalContext();
     llvm_shutdown_obj shutdown;
 
     InitializeAllTargets();

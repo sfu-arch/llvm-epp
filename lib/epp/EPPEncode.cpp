@@ -24,9 +24,14 @@
 #include <unordered_set>
 #include <vector>
 
+// Testing
+#include "AuxGraph.h"
+using namespace aux;
+
 using namespace llvm;
 using namespace epp;
 using namespace std;
+
 
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
@@ -48,21 +53,6 @@ void EPPEncode::releaseMemory() {
     LI = nullptr;
     numPaths.clear();
     ACFG.clear();
-}
-
-// LoopInfo contains a mapping from basic block to the innermost loop. Find
-// the outermost loop in the loop nest that contains BB.
-const Loop *getOutermostLoop(const LoopInfo *LI, const BasicBlock *BB) {
-    const Loop *L = LI->getLoopFor(BB);
-    if (L) {
-        while (const Loop *Parent = L->getParentLoop())
-            L = Parent;
-    }
-
-    if (L == nullptr) {
-        assert(L && "getLoopFor returned null");
-    }
-    return L;
 }
 
 void postorderHelper(BasicBlock *toVisit, vector<BasicBlock *> &blocks,
@@ -89,7 +79,7 @@ vector<BasicBlock *> postOrder(BasicBlock *Block,
     return ordered;
 }
 
-vector<BasicBlock *> postOrder(Function &F, LoopInfo *LI) {
+vector<BasicBlock *> postOrder(Function &F) {
     vector<BasicBlock *> PostOrderBlocks;
 
     // Add all the basicblocks in the function to a set.
@@ -150,40 +140,10 @@ vector<BasicBlock *> postOrder(Function &F, LoopInfo *LI) {
         }
     }
 
-#if 0
-        // Any SCC with more than 1 BB is a loop, however if there is a self
-        // referential basic block then that will be counted as a loop as well.
-        if (I.hasLoop()) {
-            // Since the SCC is a fully connected components,
-            // for a loop nest using *any* BB should be sufficient
-            // to get the outermost loop.
-
-            auto *OuterLoop = getOutermostLoop(LI, SCCBBs[0]);
-
-            // Get the blocks as a set to perform fast test for SCC membership
-            set<BasicBlock *> SCCBlocksSet(SCCBBs.begin(), SCCBBs.end());
-
-            // Get the loopy blocks in post order
-            auto blocks = postOrder(OuterLoop, SCCBlocksSet);
-
-            assert(SCCBBs.size() == blocks.size() &&
-                   "Could not discover all blocks");
-
-            for (auto *BB : blocks) {
-                PostOrderBlocks.emplace_back(BB);
-            }
-        } else {
-            // There is only 1 BB in this vector
-            auto BBI = SCCBBs.begin();
-            PostOrderBlocks.emplace_back(*BBI);
-        }
-    }
-
-#endif
-    (errs() << "Post Order Blocks: \n");
+    DEBUG(errs() << "Post Order Blocks: \n");
     for (auto &POB : PostOrderBlocks)
-        (errs() << POB->getName() << " ");
-    (errs() << "\n");
+        DEBUG(errs() << POB->getName() << " ");
+    DEBUG(errs() << "\n");
 
     return PostOrderBlocks;
 }
@@ -204,9 +164,13 @@ getBackEdges(BasicBlock *StartBB) {
 void EPPEncode::encode(Function &F) {
     DEBUG(errs() << "Called Encode on " << F.getName() << "\n");
 
-    auto POB   = postOrder(F, LI);
+    AuxGraph AG(F);
+
+    auto POB   = postOrder(F);
     auto Entry = POB.back(), Exit = POB.front();
     auto BackEdges = getBackEdges(&F.getEntryBlock());
+
+    AG.segment(BackEdges);
 
     // Add real edges
     for (auto &BB : POB) {
@@ -231,6 +195,7 @@ void EPPEncode::encode(Function &F) {
     if (Entry == Exit) {
         ACFG.add(Entry);
     }
+
 
     for (auto &B : POB) {
         APInt pathCount(128, 0, true);
@@ -257,6 +222,41 @@ void EPPEncode::encode(Function &F) {
         report_fatal_error("Numpaths greater than 2^64, please use -w option "
                            "for 128 bit counters");
     }
+
+    llvm::DenseMap<llvm::BasicBlock *, llvm::APInt> numPathsA;
+    for (auto &B : AG.nodes()) {
+        APInt pathCount(128, 0, true);
+
+        if (isFunctionExiting(B))
+            pathCount = 1;
+
+        for (auto &SE : AG.succs(B)) {
+            AG[SE] = pathCount;
+            auto *S = SE->tgt;
+            if (numPathsA.count(S) == 0)
+                numPathsA.insert(make_pair(S, APInt(128, 0, true)));
+
+            // This is the only place we need to check for overflow.
+            bool Ov   = false;
+            pathCount = pathCount.sadd_ov(numPathsA[S], Ov);
+            if (Ov) {
+                report_fatal_error("Integer Overflow");
+            }
+        }
+        numPathsA.insert({B, pathCount});
+    }
+
+    error_code EC;
+    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
+    AG.dot(out);
+    out.close();
+
+
+    raw_fd_ostream out2("acfg.dot", EC, sys::fs::F_Text);
+    ACFG.dot(out2);
+    out2.close();
+
+    errs() << numPathsA[Entry] << " " <<  numPaths[Entry]  << "\n";
 }
 
 char EPPEncode::ID = 0;
