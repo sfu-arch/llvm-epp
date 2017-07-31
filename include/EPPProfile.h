@@ -12,7 +12,7 @@ struct EPPProfile : public llvm::ModulePass {
     static char ID;
 
     llvm::LoopInfo *LI;
-    llvm::DenseMap<llvm::Function *, uint32_t> FunctionIds;
+    llvm::DenseMap<llvm::Function *, uint64_t> FunctionIds;
 
     EPPProfile() : llvm::ModulePass(ID), LI(nullptr) {}
 
@@ -23,6 +23,7 @@ struct EPPProfile : public llvm::ModulePass {
 
     virtual bool runOnModule(llvm::Module &m) override;
     void instrument(llvm::Function &F, EPPEncode &E);
+    void addCtorsAndDtors(llvm::Module& Mod);
 
     bool doInitialization(llvm::Module &m) override;
     bool doFinalization(llvm::Module &m) override;

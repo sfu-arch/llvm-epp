@@ -23,7 +23,7 @@ class EPP(data) {
     shared_ptr<TLSDataTy> Ptr;
 
   public:
-    void log(uint64_t Val, uint32_t FunctionId) {
+    void log(uint64_t Val, uint64_t FunctionId) {
         // cout << "log " << tid << " " << Val << " " << FunctionId << endl;
         (*Ptr)[FunctionId][Val] += 1;
     }
@@ -45,7 +45,7 @@ extern "C" {
 
 void EPP(init)() {}
 
-void EPP(logPath)(uint64_t Val, uint32_t FunctionId) {
+void EPP(logPath)(uint64_t Val, uint64_t FunctionId) {
     Data.log(Val, FunctionId);
 }
 

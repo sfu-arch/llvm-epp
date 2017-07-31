@@ -256,7 +256,7 @@ void EPPEncode::encode(Function &F) {
     ACFG.dot(out2);
     out2.close();
 
-    errs() << numPathsA[Entry] << " " <<  numPaths[Entry]  << "\n";
+    //errs() << numPathsA[Entry] << " " <<  numPaths[Entry]  << "\n";
 }
 
 char EPPEncode::ID = 0;

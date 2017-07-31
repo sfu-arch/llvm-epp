@@ -52,63 +52,60 @@ static void saveModule(Module &m, StringRef filename) {
     WriteBitcodeToFile(&m, out);
 }
 
-bool EPPProfile::runOnModule(Module &module) {
-    DEBUG(errs() << "Running Profile\n");
-    auto &Ctx = module.getContext();
-
-    errs() << "# Instrumented Functions\n";
-
-    uint32_t NumberOfFunctions = FunctionIds.size();
-
-    for (auto &func : module) {
-        if (!func.isDeclaration()) {
-            errs() << "- name: " << func.getName() << "\n";
-            auto &enc = getAnalysis<EPPEncode>(func);
-            errs() << "  num_paths: " << enc.numPaths[&func.getEntryBlock()]
-                   << "\n";
-            instrument(func, enc);
-        }
-    }
-
+void EPPProfile::addCtorsAndDtors(Module &Mod) {
+    auto &Ctx = Mod.getContext();
     auto *voidTy    = Type::getVoidTy(Ctx);
     auto *int32Ty   = Type::getInt32Ty(Ctx);
     auto *int8PtrTy = Type::getInt8PtrTy(Ctx, 0);
-    auto *int8Ty    = Type::getInt8Ty(Ctx);
-    auto *Zero      = ConstantInt::get(int32Ty, 0, false);
+    uint32_t NumberOfFunctions = FunctionIds.size();
 
-    Function *EPPInit = nullptr, *EPPSave = nullptr;
-
-    EPPInit = llvm::cast<Function>(
-        module.getOrInsertFunction("__epp_init", voidTy, int32Ty, nullptr));
-    EPPSave = llvm::cast<Function>(
-        module.getOrInsertFunction("__epp_save", voidTy, int8PtrTy, nullptr));
+    auto *EPPInit = cast<Function>(
+        Mod.getOrInsertFunction("__epp_init", voidTy, int32Ty, nullptr));
+    auto *EPPSave = cast<Function>(
+        Mod.getOrInsertFunction("__epp_save", voidTy, int8PtrTy, nullptr));
 
     // Add Global Constructor for initializing path profiling
-    auto *EPPInitCtor = llvm::cast<Function>(
-        module.getOrInsertFunction("__epp_ctor", voidTy, nullptr));
+    auto *EPPInitCtor = cast<Function>(
+        Mod.getOrInsertFunction("__epp_ctor", voidTy, nullptr));
     auto *CtorBB = BasicBlock::Create(Ctx, "entry", EPPInitCtor);
     auto *Arg    = ConstantInt::get(int32Ty, NumberOfFunctions, false);
     CallInst::Create(EPPInit, {Arg}, "", CtorBB);
     ReturnInst::Create(Ctx, CtorBB);
-    appendToGlobalCtors(module, EPPInitCtor, 0);
+    appendToGlobalCtors(Mod, EPPInitCtor, 0);
 
     auto *Number = ConstantInt::get(int32Ty, NumberOfFunctions, false);
-    new GlobalVariable(module, Number->getType(), false,
+    new GlobalVariable(Mod, Number->getType(), false,
                        GlobalValue::ExternalLinkage, Number,
                        "__epp_numberOfFunctions");
 
     // Add global destructor to dump out results
-    auto *EPPSaveDtor = llvm::cast<Function>(
-        module.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
+    auto *EPPSaveDtor = cast<Function>(
+        Mod.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
     auto *DtorBB = BasicBlock::Create(Ctx, "entry", EPPSaveDtor);
     IRBuilder<> Builder(DtorBB);
     Builder.CreateCall(EPPSave, {Builder.CreateGlobalStringPtr(
                                     profileOutputFilename.getValue())});
     Builder.CreateRet(nullptr);
 
-    appendToGlobalDtors(module, llvm::cast<Function>(EPPSaveDtor), 0);
+    appendToGlobalDtors(Mod, cast<Function>(EPPSaveDtor), 0);
+}
 
-    //saveModule(module, "testing.bc");
+bool EPPProfile::runOnModule(Module &Mod) {
+    DEBUG(errs() << "Running Profile\n");
+
+    errs() << "# Instrumented Functions\n";
+
+    for (auto &F : Mod) {
+        if (!F.isDeclaration()) {
+            errs() << "- name: " << F.getName() << "\n";
+            auto &Enc = getAnalysis<EPPEncode>(F);
+            errs() << "  num_paths: " << Enc.numPaths[&F.getEntryBlock()]
+                   << "\n";
+            instrument(F, Enc);
+        }
+    }
+    
+    addCtorsAndDtors(Mod);
 
     return true;
 }
@@ -248,13 +245,77 @@ void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
     }
 }
 
+static BasicBlock* interpose(BasicBlock *Src, BasicBlock *Tgt) {
+    auto &Ctx = Src->getContext();
+    DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
+                 << "\n");
+
+    // Sanity Checks
+    auto found = false;
+    for (auto S = succ_begin(Src), E = succ_end(Src); S != E; S++)
+        if (*S == Tgt)
+            found = true;
+    assert(found && "Could not find the edge to split");
+
+    auto *F  = Tgt->getParent();
+    auto *BB = BasicBlock::Create(Ctx, Src->getName() + ".intp", F);
+
+    auto *T = Src->getTerminator();
+    T->replaceUsesOfWith(Tgt, BB);
+
+    BranchInst::Create(Tgt, BB);
+
+    // Hoist all special instructions from the Tgt block
+    // to the new block. Rewrite the uses of the old instructions
+    // to use the instructions in the new block.
+
+    for (auto &I : vector<BasicBlock::iterator>(
+             Tgt->begin(), Tgt->getFirstInsertionPt())) {
+        I->moveBefore(BB->getTerminator());
+    }
+
+    return BB;
+}
+
+static void insertLogPath(BasicBlock *BB, uint64_t FuncId, 
+        AllocaInst *Ctr, Constant* Zap) {
+
+    Module *M = BB->getModule();
+    auto &Ctx = M->getContext();
+    auto *voidTy   = Type::getVoidTy(Ctx);
+    auto *CtrTy = Ctr->getAllocatedType();
+    auto *FIdArg = ConstantInt::getIntegerValue(CtrTy, APInt(64, FuncId, true));
+    Function *logFun2 = cast<Function>(M->getOrInsertFunction("__epp_logPath", voidTy,
+                                                    CtrTy, CtrTy, nullptr));
+    Instruction *logPos = BB->getTerminator();
+
+    // If the terminator is a unreachable inst, then the instruction
+    // prior to it is *most* probably a call instruction which does
+    // not return. So modify the logPos to point to the instruction
+    // before that one.
+
+    if (isa<UnreachableInst>(logPos)) {
+        auto Pos  = BB->getFirstInsertionPt();
+        auto Next = next(Pos);
+        while (&*Next != BB->getTerminator()) {
+            Pos++, Next++;
+        }
+        logPos = &*Pos;
+    }
+
+    auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
+    vector<Value *> Params = {LI, FIdArg};
+    auto *CI               = CallInst::Create(logFun2, Params, "");
+    CI->insertAfter(LI);
+    (new StoreInst(Zap, Ctr))->insertAfter(CI);
+}
+
 void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Module *M      = F.getParent();
     auto &Ctx      = M->getContext();
-    auto *voidTy   = Type::getVoidTy(Ctx);
-    auto *FuncIdTy = Type::getInt32Ty(Ctx);
+    //auto *FuncIdTy = Type::getInt32Ty(Ctx);
 
-    auto FuncId = FunctionIds[&F];
+    uint64_t FuncId = FunctionIds[&F];
 
     // 1. Lookup the Function to Function ID mapping here
     // 2. Create a constant int for the id
@@ -262,77 +323,10 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
     Type *CtrTy = Type::getInt64Ty(Ctx);
     Constant *Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
-
-    Function *logFun2 = cast<Function>(M->getOrInsertFunction("__epp_logPath", voidTy,
-                                                    CtrTy, FuncIdTy, nullptr));
-
-    auto *FIdArg =
-        ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
-
     auto *Ctr = new AllocaInst(CtrTy, nullptr, "epp.ctr",
                                &*F.getEntryBlock().getFirstInsertionPt());
-
     auto *SI = new StoreInst(Zap, Ctr);
     SI->insertAfter(Ctr);
-
-    
-    auto insertLogPath = [&logFun2, &Ctr, &Zap,
-                          &FIdArg](BasicBlock *BB) {
-
-        auto *CtrTy = Ctr->getAllocatedType();
-        Instruction *logPos = BB->getTerminator();
-
-        // If the terminator is a unreachable inst, then the instruction
-        // prior to it is *most* probably a call instruction which does
-        // not return. So modify the logPos to point to the instruction
-        // before that one.
-
-        if (isa<UnreachableInst>(logPos)) {
-            auto Pos  = BB->getFirstInsertionPt();
-            auto Next = next(Pos);
-            while (&*Next != BB->getTerminator()) {
-                Pos++, Next++;
-            }
-            logPos = &*Pos;
-        }
-
-        auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
-        vector<Value *> Params = {LI, FIdArg};
-        auto *CI               = CallInst::Create(logFun2, Params, "");
-        CI->insertAfter(LI);
-        (new StoreInst(Zap, Ctr))->insertAfter(CI);
-    };
-
-    auto interpose = [&Ctx](BasicBlock *Src, BasicBlock *Tgt) -> BasicBlock * {
-        DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
-                     << "\n");
-
-        // Sanity Checks
-        auto found = false;
-        for (auto S = succ_begin(Src), E = succ_end(Src); S != E; S++)
-            if (*S == Tgt)
-                found = true;
-        assert(found && "Could not find the edge to split");
-
-        auto *F  = Tgt->getParent();
-        auto *BB = BasicBlock::Create(Ctx, Src->getName() + ".intp", F);
-
-        auto *T = Src->getTerminator();
-        T->replaceUsesOfWith(Tgt, BB);
-
-        BranchInst::Create(Tgt, BB);
-
-        // Hoist all special instructions from the Tgt block
-        // to the new block. Rewrite the uses of the old instructions
-        // to use the instructions in the new block.
-
-        for (auto &I : vector<BasicBlock::iterator>(
-                 Tgt->begin(), Tgt->getFirstInsertionPt())) {
-            I->moveBefore(BB->getTerminator());
-        }
-
-        return BB;
-    };
 
     auto ExitBlocks = getFunctionExitBlocks(F);
     auto *Entry = &F.getEntryBlock(), *Exit = *ExitBlocks.begin();
@@ -364,7 +358,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
             auto *Split = interpose(SRC(E), TGT(E));
             if (BackedgeLog) {
                 insertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal, Ctr);
-                insertLogPath(Split);
+                insertLogPath(Split, FuncId, Ctr, Zap);
                 insertInc(Split->getTerminator(), Val2, Ctr);
             } else {
                 insertInc(&*Split->getFirstInsertionPt(), Val1, Ctr);
@@ -375,7 +369,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     // Add the logpath function for all function exiting
     // basic blocks.
     for (auto &EB : ExitBlocks) {
-        insertLogPath(EB);
+        insertLogPath(EB, FuncId, Ctr, Zap);
     }
 }
 
