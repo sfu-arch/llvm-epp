@@ -17,11 +17,16 @@
 using namespace llvm;
 using namespace epp;
 using namespace std;
+using namespace aux;
 
-static inline bool isFunctionExiting(BasicBlock *BB) {
+namespace {
+
+inline bool isExitBlock(BasicBlock *BB) {
     if (BB->getTerminator()->getNumSuccessors() == 0)
         return true;
     return false;
+}
+
 }
 
 bool EPPDecode::doInitialization(Module &M) { return false; }
@@ -128,47 +133,58 @@ pair<PathType, vector<llvm::BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
     vector<llvm::BasicBlock *> Sequence;
     auto *Position = &F.getEntryBlock();
-    auto &ACFG     = Enc.ACFG;
+    //auto &ACFG     = Enc.ACFG;
+    
+    auto &AG = Enc.AG;
 
     DEBUG(errs() << "Decode Called On: " << pathID << "\n");
 
-    vector<Edge> SelectedEdges;
+    //vector<Edge> SelectedEdges;
+    vector<EdgePtr> SelectedEdges;
     while (true) {
         Sequence.push_back(Position);
-        if (isFunctionExiting(Position))
+        if (isExitBlock(Position))
             break;
         APInt Wt(128, 0, true);
-        Edge Select = {nullptr, nullptr};
+        //Edge Select = {nullptr, nullptr};
+        EdgePtr Select = nullptr;
         DEBUG(errs() << Position->getName() << " (\n");
-        for (auto *Tgt : ACFG.succs(Position)) {
-            auto EWt = ACFG[{Position, Tgt}];
-            DEBUG(errs() << "\t" << Tgt->getName() << " [" << EWt << "]\n");
-            if (ACFG[{Position, Tgt}].uge(Wt) &&
-                ACFG[{Position, Tgt}].ule(pathID)) {
-                Select = {Position, Tgt};
-                Wt     = ACFG[{Position, Tgt}];
+        //for (auto *Tgt : ACFG.succs(Position)) {
+        for (auto &Edge : AG.succs(Position)) {
+            //auto EWt = ACFG[{Position, Tgt}];
+            auto EWt = AG.getEdgeWeight(Edge);
+            DEBUG(errs() << "\t" << Edge->tgt->getName() << " [" << EWt << "]\n");
+            if (EWt.uge(Wt) &&
+                EWt.ule(pathID)) {
+                //Select = {Position, Tgt};
+                Select = Edge;
+                //Wt     = ACFG[{Position, Tgt}];
+                Wt = EWt;
             }
         }
         DEBUG(errs() << " )\n\n\n");
 
         SelectedEdges.push_back(Select);
-        Position = TGT(Select);
+        //Position = TGT(Select);
+        Position = Select->tgt;
         pathID -= Wt;
     }
 
     if (SelectedEdges.empty())
         return {RIRO, Sequence};
 
-    auto FakeEdges = ACFG.getFakeEdges();
+    //auto FakeEdges = ACFG.getFakeEdges();
 
 #define SET_BIT(n, x) (n |= 1ULL << x)
-    uint64_t Type = 0;
-    if (FakeEdges.count(SelectedEdges.front())) {
-        SET_BIT(Type, 0);
-    }
-    if (FakeEdges.count(SelectedEdges.back())) {
-        SET_BIT(Type, 1);
-    }
+     uint64_t Type = 0;
+     //if (FakeEdges.count(SelectedEdges.front())) {
+     if (!SelectedEdges.front()->real) {
+         SET_BIT(Type, 0);
+     }
+     //if (FakeEdges.count(SelectedEdges.back())) {
+     if (!SelectedEdges.back()->real) {
+         SET_BIT(Type, 1);
+     }
 #undef SET_BIT
 
     return {static_cast<PathType>(Type),

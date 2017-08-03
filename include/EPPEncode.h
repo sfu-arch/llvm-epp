@@ -15,7 +15,8 @@
 #include <map>
 #include <unordered_map>
 
-#include "AltCFG.h"
+//#include "AltCFG.h"
+#include "AuxGraph.h"
 
 namespace epp {
 
@@ -25,7 +26,8 @@ struct EPPEncode : public llvm::FunctionPass {
 
     llvm::LoopInfo *LI;
     llvm::DenseMap<llvm::BasicBlock *, llvm::APInt> numPaths;
-    altcfg ACFG;
+    // altcfg ACFG;
+    aux::AuxGraph AG;
 
     EPPEncode() : llvm::FunctionPass(ID), LI(nullptr) {}
 

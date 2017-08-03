@@ -120,116 +120,7 @@ static SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
     return R;
 }
 
-// void EPPProfile::process(Function &F, EPPEncode &Enc) {
-//     Module *M      = F.getParent();
-//     auto &Ctx      = M->getContext();
-//     auto *voidTy   = Type::getVoidTy(Ctx);
-//     auto *FuncIdTy = Type::getInt32Ty(Ctx);
-// 
-//     auto FuncId = FunctionIds[&F];
-// 
-//     // 1. Lookup the Function to Function ID mapping here
-//     // 2. Create a constant int for the id
-//     // 3. Pass the id in the logpath2 function call
-// 
-//     Type *CtrTy   = nullptr;
-//     Constant *Zap = nullptr;
-// 
-//     CtrTy = Type::getInt64Ty(Ctx);
-//     Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
-// 
-//     Function *logFun2 = nullptr;
-// 
-//     logFun2 = cast<Function>(M->getOrInsertFunction("__epp_logPath", voidTy,
-//                                                     CtrTy, FuncIdTy, nullptr));
-// 
-//     auto *FIdArg =
-//         ConstantInt::getIntegerValue(FuncIdTy, APInt(32, FuncId, true));
-// 
-//     auto *Ctr = new AllocaInst(CtrTy, nullptr, "epp.ctr",
-//                                &*F.getEntryBlock().getFirstInsertionPt());
-// 
-//     auto *SI = new StoreInst(Zap, Ctr);
-//     SI->insertAfter(Ctr);
-// 
-//     auto insertInc = [&Ctr, &CtrTy](Instruction *addPos, APInt Increment) {
-//         if (Increment.ne(APInt(128, 0, true))) {
-//             DEBUG(errs() << "Inserting Increment " << Increment << " "
-//                          << addPos->getParent()->getName() << "\n");
-//             // Context Counter
-//             auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
-// 
-//             Constant *CI = nullptr;
-//             auto I64     = APInt(64, Increment.getLimitedValue(), true);
-//             CI           = ConstantInt::getIntegerValue(CtrTy, I64);
-//             //}
-// 
-//             auto *BI = BinaryOperator::CreateAdd(LI, CI);
-//             BI->insertAfter(LI);
-//             (new StoreInst(BI, Ctr))->insertAfter(BI);
-//         }
-//     };
-// 
-//     auto insertLogPath = [&logFun2, &Ctr, &CtrTy, &Zap,
-//                           &FIdArg](BasicBlock *BB) {
-// 
-//         Instruction *logPos = BB->getTerminator();
-// 
-//         // If the terminator is a unreachable inst, then the instruction
-//         // prior to it is *most* probably a call instruction which does
-//         // not return. So modify the logPos to point to the instruction
-//         // before that one.
-// 
-//         if (isa<UnreachableInst>(logPos)) {
-//             auto Pos  = BB->getFirstInsertionPt();
-//             auto Next = next(Pos);
-//             while (&*Next != BB->getTerminator()) {
-//                 Pos++, Next++;
-//             }
-//             logPos = &*Pos;
-//         }
-// 
-//         auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
-//         vector<Value *> Params = {LI, FIdArg};
-//         auto *CI               = CallInst::Create(logFun2, Params, "");
-//         CI->insertAfter(LI);
-//         (new StoreInst(Zap, Ctr))->insertAfter(CI);
-//     };
-// 
-//     auto interpose = [&Ctx](BasicBlock *Src, BasicBlock *Tgt) -> BasicBlock * {
-//         DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
-//                      << "\n");
-// 
-//         // Sanity Checks
-//         auto found = false;
-//         for (auto S = succ_begin(Src), E = succ_end(Src); S != E; S++)
-//             if (*S == Tgt)
-//                 found = true;
-//         assert(found && "Could not find the edge to split");
-// 
-//         auto *F  = Tgt->getParent();
-//         auto *BB = BasicBlock::Create(Ctx, Src->getName() + ".intp", F);
-// 
-//         auto *T = Src->getTerminator();
-//         T->replaceUsesOfWith(Tgt, BB);
-// 
-//         BranchInst::Create(Tgt, BB);
-// 
-//         // Hoist all special instructions from the Tgt block
-//         // to the new block. Rewrite the uses of the old instructions
-//         // to use the instructions in the new block.
-// 
-//         for (auto &I : vector<BasicBlock::iterator>(
-//                  Tgt->begin(), Tgt->getFirstInsertionPt())) {
-//             I->moveBefore(BB->getTerminator());
-//         }
-// 
-//         return BB;
-//     };
-// 
-// }
-
-void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
+static void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
     if (Increment.ne(APInt(128, 0, true))) {
         DEBUG(errs() << "Inserting Increment " << Increment << " "
                      << addPos->getParent()->getName() << "\n");
@@ -313,7 +204,6 @@ static void insertLogPath(BasicBlock *BB, uint64_t FuncId,
 void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Module *M      = F.getParent();
     auto &Ctx      = M->getContext();
-    //auto *FuncIdTy = Type::getInt32Ty(Ctx);
 
     uint64_t FuncId = FunctionIds[&F];
 
@@ -329,42 +219,35 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     SI->insertAfter(Ctr);
 
     auto ExitBlocks = getFunctionExitBlocks(F);
-    auto *Entry = &F.getEntryBlock(), *Exit = *ExitBlocks.begin();
 
-    CFGInstHelper Inst(Enc.ACFG, Entry, Exit);
+    // Get all the non-zero real edges to instrument
+    const auto &Wts = Enc.AG.getWeights();
 
-    APInt BackVal = APInt(128, 0, true);
-#define _ std::ignore
-    tie(_, BackVal, _, _) = Inst.get({Exit, Entry});
-#undef _
-
-    DEBUG(errs() << "BackVal : " << BackVal.toString(10, true) << "\n");
-
-    SmallVector<Edge, 32> FunctionEdges;
-    // For each edge in the function, get the increments
-    // for the edge and stick them in there.
-    for (auto &BB : F) {
-        for (auto SB = succ_begin(&BB), SE = succ_end(&BB); SB != SE; SB++) {
-            FunctionEdges.push_back({&BB, *SB});
-        }
+    for(auto &W : Wts) {
+        auto &Ptr = W.first;
+        BasicBlock *Src = Ptr->src, *Tgt = Ptr->tgt;
+        BasicBlock *N = interpose(Src, Tgt);
+        insertInc(&*N->getFirstInsertionPt(), W.second, Ctr);
     }
 
-    for (auto &E : FunctionEdges) {
-        APInt Val1(128, 0, true), Val2(128, 0, true);
-        bool Exists = false, BackedgeLog = false;
-        tie(Exists, Val1, BackedgeLog, Val2) = Inst.get(E);
+    // Get the weights for the segmented edges
+    const auto &SegMap = Enc.AG.getSegmentMap();
 
-        if (Exists) {
-            auto *Split = interpose(SRC(E), TGT(E));
-            if (BackedgeLog) {
-                insertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal, Ctr);
-                insertLogPath(Split, FuncId, Ctr, Zap);
-                insertInc(Split->getTerminator(), Val2, Ctr);
-            } else {
-                insertInc(&*Split->getFirstInsertionPt(), Val1, Ctr);
-            }
-        }
+    for(auto &S : SegMap) {
+        auto &Ptr = S.first;
+        BasicBlock *Src = Ptr->src, *Tgt = Ptr->tgt;
+        BasicBlock *N = interpose(Src, Tgt);
+
+        auto &AExit = S.second.first;
+        APInt Pre = Enc.AG.getEdgeWeight(AExit);
+        auto &EntryB = S.second.second;
+        APInt Post = Enc.AG.getEdgeWeight(EntryB);
+       
+        insertInc(&*N->getFirstInsertionPt(), Pre, Ctr);
+        insertLogPath(N, FuncId, Ctr, Zap);
+        insertInc(&*N->getTerminator(), Post, Ctr);
     }
+
 
     // Add the logpath function for all function exiting
     // basic blocks.
@@ -372,5 +255,67 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         insertLogPath(EB, FuncId, Ctr, Zap);
     }
 }
+
+//void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
+    //Module *M      = F.getParent();
+    //auto &Ctx      = M->getContext();
+
+    //uint64_t FuncId = FunctionIds[&F];
+
+    //// 1. Lookup the Function to Function ID mapping here
+    //// 2. Create a constant int for the id
+    //// 3. Pass the id in the logpath2 function call
+
+    //Type *CtrTy = Type::getInt64Ty(Ctx);
+    //Constant *Zap   = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
+    //auto *Ctr = new AllocaInst(CtrTy, nullptr, "epp.ctr",
+                               //&*F.getEntryBlock().getFirstInsertionPt());
+    //auto *SI = new StoreInst(Zap, Ctr);
+    //SI->insertAfter(Ctr);
+
+    //auto ExitBlocks = getFunctionExitBlocks(F);
+    //auto *Entry = &F.getEntryBlock(), *Exit = *ExitBlocks.begin();
+
+    //CFGInstHelper Inst(Enc.ACFG, Entry, Exit);
+
+    //APInt BackVal = APInt(128, 0, true);
+//#define _ std::ignore
+    //tie(_, BackVal, _, _) = Inst.get({Exit, Entry});
+//#undef _
+
+    //DEBUG(errs() << "BackVal : " << BackVal.toString(10, true) << "\n");
+
+    //SmallVector<Edge, 32> FunctionEdges;
+    //// For each edge in the function, get the increments
+    //// for the edge and stick them in there.
+    //for (auto &BB : F) {
+        //for (auto SB = succ_begin(&BB), SE = succ_end(&BB); SB != SE; SB++) {
+            //FunctionEdges.push_back({&BB, *SB});
+        //}
+    //}
+
+    //for (auto &E : FunctionEdges) {
+        //APInt Val1(128, 0, true), Val2(128, 0, true);
+        //bool Exists = false, BackedgeLog = false;
+        //tie(Exists, Val1, BackedgeLog, Val2) = Inst.get(E);
+
+        //if (Exists) {
+            //auto *Split = interpose(SRC(E), TGT(E));
+            //if (BackedgeLog) {
+                //insertInc(&*Split->getFirstInsertionPt(), Val1 + BackVal, Ctr);
+                //insertLogPath(Split, FuncId, Ctr, Zap);
+                //insertInc(Split->getTerminator(), Val2, Ctr);
+            //} else {
+                //insertInc(&*Split->getFirstInsertionPt(), Val1, Ctr);
+            //}
+        //}
+    //}
+
+    //// Add the logpath function for all function exiting
+    //// basic blocks.
+    //for (auto &EB : ExitBlocks) {
+        //insertLogPath(EB, FuncId, Ctr, Zap);
+    //}
+//}
 
 char EPPProfile::ID = 0;

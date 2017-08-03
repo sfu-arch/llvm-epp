@@ -110,10 +110,11 @@ SmallVector<BasicBlock *, 32> postOrder(Function &F) {
 
 }
 
+
 /// Construct the auxiliary graph representation from the original
 /// function control flow graph. At this stage the CFG and the 
 /// AuxGraph are the same graph. 
-AuxGraph::AuxGraph(Function &f) : F(f) {
+void AuxGraph::init(Function &F) {
     Nodes = postOrder(F);
     for (auto &BB : Nodes) {
         for (auto S = succ_begin(BB), E = succ_end(BB); S != E; S++) {
@@ -140,7 +141,9 @@ void AuxGraph::add(BasicBlock *src, BasicBlock *tgt) {
 /// List of edges to be *segmented*. A segmented edge is an edge which
 /// exists in the original CFG but is replaced by two edges in the 
 /// AuxGraph. An edge from A->B, is replaced by {A->Exit, Entry->B}.
+/// An edge can only be segmented once. This 
 void AuxGraph::segment(DenseSet<pair<const BasicBlock *, const BasicBlock *>> &List) {
+    SmallVector<EdgePtr, 4> SegmentList; 
     /// Move the internal EdgePtr from the EdgeList to the SegmentList
     for(auto &L : List) {
         auto *Src = L.first , *Tgt = L.second;
@@ -149,6 +152,7 @@ void AuxGraph::segment(DenseSet<pair<const BasicBlock *, const BasicBlock *>> &L
         auto it = find_if(Edges.begin(), Edges.end(), [&Tgt](EdgePtr& P) {
                 return P->tgt == Tgt; });
         assert(it != Edges.end() && "Target basicblock not found in edge list.");
+        assert(SegmentMap.count(*it) == 0 && "An edge can only be segmented once.");
         SegmentList.push_back(move(*it));
         Edges.erase(it);
     }  
@@ -164,6 +168,26 @@ void AuxGraph::segment(DenseSet<pair<const BasicBlock *, const BasicBlock *>> &L
         EdgeList[Entry].push_back(EntryB);
         SegmentMap.insert({S, {AExit, EntryB}});
     }
+}
+
+/// Get all non-zero weights for non-segmented edges.
+SmallVector<pair<EdgePtr, APInt>, 16> AuxGraph::getWeights() {
+    SmallVector<pair<EdgePtr, APInt>, 16> Result;
+    copy_if(Weights.begin(), Weights.end(), back_inserter(Result),
+            [](const pair<EdgePtr, APInt> &V) { return V.first->real && 
+                V.second.ne(APInt(128, 0, true));});
+    return Result;
+}
+
+/// Get the segment mapping
+std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>> 
+AuxGraph::getSegmentMap() {
+    return SegmentMap;
+}
+
+/// Get weight for a specific edge.
+APInt AuxGraph::getEdgeWeight(const EdgePtr &Ptr) {
+    return Weights[Ptr];
 }
 
 /// Return the successors edges of a basicblock from the Auxiliary Graph. 
@@ -186,4 +210,10 @@ void AuxGraph::dot(raw_ostream &os = errs()) {
         }
     }
     os << "}\n";
+}
+
+/// Clear all internal state; to be called by the releaseMemory function 
+void AuxGraph::clear() {
+    Nodes.clear(), EdgeList.clear(), 
+        SegmentMap.clear(), Weights.clear();
 }

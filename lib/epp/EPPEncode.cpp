@@ -52,7 +52,8 @@ static bool isFunctionExiting(BasicBlock *BB) {
 void EPPEncode::releaseMemory() {
     LI = nullptr;
     numPaths.clear();
-    ACFG.clear();
+    //ACFG.clear();
+    AG.clear();
 }
 
 void postorderHelper(BasicBlock *toVisit, vector<BasicBlock *> &blocks,
@@ -164,47 +165,78 @@ getBackEdges(BasicBlock *StartBB) {
 void EPPEncode::encode(Function &F) {
     DEBUG(errs() << "Called Encode on " << F.getName() << "\n");
 
-    AuxGraph AG(F);
+    AG.init(F);
 
-    auto POB   = postOrder(F);
-    auto Entry = POB.back(), Exit = POB.front();
+    //auto POB   = postOrder(F);
+    //auto Entry = POB.back(), Exit = POB.front();
     auto BackEdges = getBackEdges(&F.getEntryBlock());
 
-    AG.segment(BackEdges);
+    DenseSet<std::pair<const BasicBlock *, const BasicBlock *>> SegmentEdges;
 
     // Add real edges
-    for (auto &BB : POB) {
+    for (auto &BB : AG.nodes()) {
         for (auto S = succ_begin(BB), E = succ_end(BB); S != E; S++) {
             if (BackEdges.count(make_pair(BB, *S)) ||
                 LI->getLoopFor(BB) != LI->getLoopFor(*S)) {
-                DEBUG(errs() << "Adding segmented edge : " << BB->getName()
-                             << " " << S->getName() << " " << Entry->getName()
-                             << " " << Exit->getName() << "\n");
-                ACFG.add(BB, *S, Entry, Exit);
-                continue;
+                //DEBUG(errs() << "Adding segmented edge : " << BB->getName()
+                             //<< " " << S->getName() << " " << Entry->getName()
+                             //<< " " << Exit->getName() << "\n");
+                SegmentEdges.insert({BB, *S});
+                //ACFG.add(BB, *S, Entry, Exit);
+                //continue;
             }
-            DEBUG(errs() << "Adding Real edge : " << BB->getName() << " "
-                         << S->getName() << "\n");
-            ACFG.add(BB, *S);
+            //DEBUG(errs() << "Adding Real edge : " << BB->getName() << " "
+                         //<< S->getName() << "\n");
+            //ACFG.add(BB, *S);
         }
     }
+
+    AG.segment(SegmentEdges);
 
     // If the function has only one basic block, then there are no edges added.
     // Handle this case separately by telling the AltCFG structure.
 
-    if (Entry == Exit) {
-        ACFG.add(Entry);
-    }
+    //if (Entry == Exit) {
+        //ACFG.add(Entry);
+    //}
 
 
-    for (auto &B : POB) {
+    //for (auto &B : POB) {
+        //APInt pathCount(128, 0, true);
+
+        //if (isFunctionExiting(B))
+            //pathCount = 1;
+
+        //for (auto &S : ACFG.succs(B)) {
+            //ACFG[{B, S}] = pathCount;
+            //if (numPaths.count(S) == 0)
+                //numPaths.insert(make_pair(S, APInt(128, 0, true)));
+
+            //// This is the only place we need to check for overflow.
+            //bool Ov   = false;
+            //pathCount = pathCount.sadd_ov(numPaths[S], Ov);
+            //if (Ov) {
+                //report_fatal_error("Integer Overflow");
+            //}
+        //}
+        //numPaths.insert({B, pathCount});
+    //}
+
+    //if (numPaths[Entry].getLimitedValue() == ~0ULL) { // && !wideCounter) {
+        //report_fatal_error("Numpaths greater than 2^64, please use -w option "
+                           //"for 128 bit counters");
+    //}
+
+    //llvm::DenseMap<llvm::BasicBlock *, llvm::APInt> numPathsA;
+    for (auto &B : AG.nodes()) {
         APInt pathCount(128, 0, true);
 
         if (isFunctionExiting(B))
             pathCount = 1;
 
-        for (auto &S : ACFG.succs(B)) {
-            ACFG[{B, S}] = pathCount;
+        for (auto &SE : AG.succs(B)) {
+            AG[SE] = pathCount;
+            auto *S = SE->tgt;
             if (numPaths.count(S) == 0)
                 numPaths.insert(make_pair(S, APInt(128, 0, true)));
 
@@ -218,43 +250,15 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-    if (numPaths[Entry].getLimitedValue() == ~0ULL) { // && !wideCounter) {
-        report_fatal_error("Numpaths greater than 2^64, please use -w option "
-                           "for 128 bit counters");
-    }
-
-    llvm::DenseMap<llvm::BasicBlock *, llvm::APInt> numPathsA;
-    for (auto &B : AG.nodes()) {
-        APInt pathCount(128, 0, true);
-
-        if (isFunctionExiting(B))
-            pathCount = 1;
-
-        for (auto &SE : AG.succs(B)) {
-            AG[SE] = pathCount;
-            auto *S = SE->tgt;
-            if (numPathsA.count(S) == 0)
-                numPathsA.insert(make_pair(S, APInt(128, 0, true)));
-
-            // This is the only place we need to check for overflow.
-            bool Ov   = false;
-            pathCount = pathCount.sadd_ov(numPathsA[S], Ov);
-            if (Ov) {
-                report_fatal_error("Integer Overflow");
-            }
-        }
-        numPathsA.insert({B, pathCount});
-    }
-
-    error_code EC;
-    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
-    AG.dot(out);
-    out.close();
+//    error_code EC;
+//    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
+//    AG.dot(out);
+//    out.close();
 
 
-    raw_fd_ostream out2("acfg.dot", EC, sys::fs::F_Text);
-    ACFG.dot(out2);
-    out2.close();
+    //raw_fd_ostream out2("acfg.dot", EC, sys::fs::F_Text);
+    //ACFG.dot(out2);
+    //out2.close();
 
     //errs() << numPathsA[Entry] << " " <<  numPaths[Entry]  << "\n";
 }

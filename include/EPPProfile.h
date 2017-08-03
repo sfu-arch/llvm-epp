@@ -17,13 +17,13 @@ struct EPPProfile : public llvm::ModulePass {
     EPPProfile() : llvm::ModulePass(ID), LI(nullptr) {}
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override {
-        //au.addRequired<llvm::LoopInfoWrapperPass>();
+        // au.addRequired<llvm::LoopInfoWrapperPass>();
         au.addRequired<EPPEncode>();
     }
 
     virtual bool runOnModule(llvm::Module &m) override;
     void instrument(llvm::Function &F, EPPEncode &E);
-    void addCtorsAndDtors(llvm::Module& Mod);
+    void addCtorsAndDtors(llvm::Module &Mod);
 
     bool doInitialization(llvm::Module &m) override;
     bool doFinalization(llvm::Module &m) override;

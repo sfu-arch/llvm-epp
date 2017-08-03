@@ -19,7 +19,7 @@ struct Path {
     APInt Id;
     uint64_t Freq;
     PathType Type;
-    vector<BasicBlock *> Blocks;
+    std::vector<BasicBlock *> Blocks;
 };
 
 struct EPPDecode : public llvm::ModulePass {
