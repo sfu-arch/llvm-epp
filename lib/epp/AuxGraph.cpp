@@ -169,11 +169,11 @@ void AuxGraph::segment(SetVector<pair<const BasicBlock *, const BasicBlock *>> &
     auto &Entry = Nodes.back(), &Exit = Nodes.front();
     for(auto &S : SegmentList) {
         auto *A = S->src, *B = S->tgt;
-        errs() << "Segmenting: " << A->getName() << "-" << B->getName() << "\n";
+        //errs() << "Segmenting: " << A->getName() << "-" << B->getName() << "\n";
         auto AExit = make_shared<Edge>(A, Exit, false);
         auto EntryB = make_shared<Edge>(Entry, B, false);
-        errs() << "Output: " << A->getName() << "-" << Exit->getName()
-                << "," << Entry->getName() << "-" << B->getName() << "\n";
+        //errs() << "Output: " << A->getName() << "-" << Exit->getName()
+                //<< "," << Entry->getName() << "-" << B->getName() << "\n";
         EdgeList[A].push_back(AExit);
         EdgeList[Entry].push_back(EntryB);
         SegmentMap.insert({S, {AExit, EntryB}});

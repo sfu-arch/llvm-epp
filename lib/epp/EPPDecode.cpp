@@ -31,26 +31,6 @@ inline bool isExitBlock(BasicBlock *BB) {
 
 bool EPPDecode::doInitialization(Module &M) { return false; }
 
-// void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out,
-//                   SmallString<8> prefix) {
-//     unsigned line = 0;
-//     llvm::StringRef file;
-//     for (auto *bb : blocks) {
-//         for (auto &instruction : *bb) {
-//             MDNode *n = instruction.getMetadata("dbg");
-//             if (!n) {
-//                 continue;
-//             }
-//             DebugLoc Loc(n);
-//             if (Loc->getLine() != line || Loc->getFilename() != file) {
-//                 line = Loc->getLine();
-//                 file = Loc->getFilename();
-//                 out << prefix << "- " << file.str() << "," << line << "\n";
-//             }
-//         }
-//     }
-// }
-
 bool EPPDecode::runOnModule(Module &M) {
 
     DenseMap<uint32_t, Function *> FunctionIdToPtr;
@@ -132,40 +112,31 @@ pair<PathType, vector<BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
     vector<BasicBlock *> Sequence;
     auto *Position = &F.getEntryBlock();
-    //auto &ACFG     = Enc.ACFG;
     
     auto &AG = Enc.AG;
 
-    (errs() << "Decode Called On: " << pathID << "\n");
+    DEBUG(errs() << "Decode Called On: " << pathID << "\n");
 
-    //AG.printWeights();
-    //vector<Edge> SelectedEdges;
     vector<EdgePtr> SelectedEdges;
     while (true) {
         Sequence.push_back(Position);
         if (isExitBlock(Position))
             break;
         APInt Wt(128, 0, true);
-        //Edge Select = {nullptr, nullptr};
         EdgePtr Select = nullptr;
-        (errs() << Position->getName() << " (\n");
-        //for (auto *Tgt : ACFG.succs(Position)) {
+        DEBUG(errs() << Position->getName() << " (\n");
         for (auto &Edge : AG.succs(Position)) {
-            //auto EWt = ACFG[{Position, Tgt}];
             auto EWt = AG.getEdgeWeight(Edge);
             if (EWt.uge(Wt) &&
                 EWt.ule(pathID)) {
-                (errs() << "\t" << Edge->tgt->getName() << " [" << EWt << "]\n");
-                //Select = {Position, Tgt};
+                DEBUG(errs() << "\t" << Edge->tgt->getName() << " [" << EWt << "]\n");
                 Select = Edge;
-                //Wt     = ACFG[{Position, Tgt}];
                 Wt = EWt;
             }
         }
-        (errs() << " )\n\n\n");
+        DEBUG(errs() << " )\n\n\n");
 
         SelectedEdges.push_back(Select);
-        //Position = TGT(Select);
         Position = Select->tgt;
         pathID -= Wt;
     }
@@ -173,15 +144,12 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
     if (SelectedEdges.empty())
         return {RIRO, Sequence};
 
-    //auto FakeEdges = ACFG.getFakeEdges();
 
 #define SET_BIT(n, x) (n |= 1ULL << x)
     uint64_t Type = 0;
-    //if (FakeEdges.count(SelectedEdges.front())) {
     if (!SelectedEdges.front()->real) {
         SET_BIT(Type, 0);
     }
-    //if (FakeEdges.count(SelectedEdges.back())) {
     if (!SelectedEdges.back()->real) {
         SET_BIT(Type, 1);
     }

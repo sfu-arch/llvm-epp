@@ -167,8 +167,6 @@ void EPPEncode::encode(Function &F) {
 
     AG.init(F);
 
-    //auto POB   = postOrder(F);
-    //auto Entry = POB.back(), Exit = POB.front();
     auto BackEdges = getBackEdges(&F.getEntryBlock());
 
     SetVector<std::pair<const BasicBlock *, const BasicBlock *>> SegmentEdges;
@@ -178,16 +176,8 @@ void EPPEncode::encode(Function &F) {
         for (auto S = succ_begin(BB), E = succ_end(BB); S != E; S++) {
             if (BackEdges.count(make_pair(BB, *S)) ||
                 LI->getLoopFor(BB) != LI->getLoopFor(*S)) {
-                //DEBUG(errs() << "Adding segmented edge : " << BB->getName()
-                             //<< " " << S->getName() << " " << Entry->getName()
-                             //<< " " << Exit->getName() << "\n");
                 SegmentEdges.insert({BB, *S});
-                //ACFG.add(BB, *S, Entry, Exit);
-                //continue;
             }
-            //DEBUG(errs() << "Adding Real edge : " << BB->getName() << " "
-                         //<< S->getName() << "\n");
-            //ACFG.add(BB, *S);
         }
     }
 
@@ -215,17 +205,11 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-    error_code EC;
-    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
-    AG.dot(out);
-    out.close();
+    // error_code EC;
+    // raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
+    // AG.dot(out);
+    // out.close();
 
-
-    //raw_fd_ostream out2("acfg.dot", EC, sys::fs::F_Text);
-    //ACFG.dot(out2);
-    //out2.close();
-
-    //errs() << numPathsA[Entry] << " " <<  numPaths[Entry]  << "\n";
 }
 
 char EPPEncode::ID = 0;

@@ -12,4 +12,4 @@ int main(int argc, char* argv[]) {
 // RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt 2> %t.compile 
 // RUN: %t-exec > %t.log
 // RUN: llvm-epp -p=%t.profile %t.bc 2> %t.decode
-// RUN: diff -aub %t.profile %s.pp
+// RUN: diff -aub %t.profile %s.txt

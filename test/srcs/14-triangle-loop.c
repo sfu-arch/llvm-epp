@@ -23,6 +23,6 @@ int main(int argc, char* argv[]) {
 // RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt 2> %t.compile 
 // RUN: %t-exec 1 2 3 > %t.log
 // RUN: llvm-epp -p=%t.profile %t.bc 2> %t.decode
-// RUN: diff -aub %t.profile %s.pp
+// RUN: diff -aub %t.profile %s.txt
 // RUN: opt -dot-cfg %t.bc 
 // RUN: dot -Tsvg cfg.main.dot -o %s.svg
