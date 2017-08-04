@@ -110,6 +110,13 @@ SmallVector<BasicBlock *, 32> postOrder(Function &F) {
 
 }
 
+void AuxGraph::printWeights() {
+    for(auto &V : Weights) {
+        errs() << V.first->src->getName() << "-" << V.first->tgt->getName() 
+                << ": " << V.second << "\n";
+    }
+}
+
 
 /// Construct the auxiliary graph representation from the original
 /// function control flow graph. At this stage the CFG and the 
@@ -142,7 +149,7 @@ void AuxGraph::add(BasicBlock *src, BasicBlock *tgt) {
 /// exists in the original CFG but is replaced by two edges in the 
 /// AuxGraph. An edge from A->B, is replaced by {A->Exit, Entry->B}.
 /// An edge can only be segmented once. This 
-void AuxGraph::segment(DenseSet<pair<const BasicBlock *, const BasicBlock *>> &List) {
+void AuxGraph::segment(SetVector<pair<const BasicBlock *, const BasicBlock *>> &List) {
     SmallVector<EdgePtr, 4> SegmentList; 
     /// Move the internal EdgePtr from the EdgeList to the SegmentList
     for(auto &L : List) {
@@ -162,8 +169,11 @@ void AuxGraph::segment(DenseSet<pair<const BasicBlock *, const BasicBlock *>> &L
     auto &Entry = Nodes.back(), &Exit = Nodes.front();
     for(auto &S : SegmentList) {
         auto *A = S->src, *B = S->tgt;
+        errs() << "Segmenting: " << A->getName() << "-" << B->getName() << "\n";
         auto AExit = make_shared<Edge>(A, Exit, false);
         auto EntryB = make_shared<Edge>(Entry, B, false);
+        errs() << "Output: " << A->getName() << "-" << Exit->getName()
+                << "," << Entry->getName() << "-" << B->getName() << "\n";
         EdgeList[A].push_back(AExit);
         EdgeList[Entry].push_back(EntryB);
         SegmentMap.insert({S, {AExit, EntryB}});

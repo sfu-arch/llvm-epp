@@ -4,6 +4,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/MapVector.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Function.h"
 
@@ -39,7 +40,8 @@ class AuxGraph {
     void dot(raw_ostream &os);
     void add(BasicBlock *src, BasicBlock *tgt);
     void
-    segment(DenseSet<std::pair<const BasicBlock *, const BasicBlock *>> &List);
+    segment(SetVector<std::pair<const BasicBlock *, const BasicBlock *>> &List);
+    void printWeights();
     SmallVector<EdgePtr, 4> succs(BasicBlock *B);
     SmallVector<std::pair<EdgePtr, APInt>, 16> getWeights();
     APInt getEdgeWeight(const EdgePtr &Ptr);

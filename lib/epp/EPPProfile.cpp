@@ -122,7 +122,7 @@ static SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
 
 static void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
     if (Increment.ne(APInt(128, 0, true))) {
-        DEBUG(errs() << "Inserting Increment " << Increment << " "
+        (errs() << "Inserting Increment " << Increment << " "
                      << addPos->getParent()->getName() << "\n");
         auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
@@ -138,7 +138,7 @@ static void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
 
 static BasicBlock* interpose(BasicBlock *Src, BasicBlock *Tgt) {
     auto &Ctx = Src->getContext();
-    DEBUG(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
+    (errs() << "Split : " << Src->getName() << " " << Tgt->getName()
                  << "\n");
 
     // Sanity Checks
@@ -170,6 +170,8 @@ static BasicBlock* interpose(BasicBlock *Src, BasicBlock *Tgt) {
 
 static void insertLogPath(BasicBlock *BB, uint64_t FuncId, 
         AllocaInst *Ctr, Constant* Zap) {
+
+    errs() << "Inserting Log: " << BB->getName() << "\n";
 
     Module *M = BB->getModule();
     auto &Ctx = M->getContext();
@@ -222,6 +224,8 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
     // Get all the non-zero real edges to instrument
     const auto &Wts = Enc.AG.getWeights();
+
+    Enc.AG.printWeights();
 
     for(auto &W : Wts) {
         auto &Ptr = W.first;

@@ -31,25 +31,25 @@ inline bool isExitBlock(BasicBlock *BB) {
 
 bool EPPDecode::doInitialization(Module &M) { return false; }
 
-void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out,
-                  SmallString<8> prefix) {
-    unsigned line = 0;
-    llvm::StringRef file;
-    for (auto *bb : blocks) {
-        for (auto &instruction : *bb) {
-            MDNode *n = instruction.getMetadata("dbg");
-            if (!n) {
-                continue;
-            }
-            DebugLoc Loc(n);
-            if (Loc->getLine() != line || Loc->getFilename() != file) {
-                line = Loc->getLine();
-                file = Loc->getFilename();
-                out << prefix << "- " << file.str() << "," << line << "\n";
-            }
-        }
-    }
-}
+// void printPathSrc(SetVector<llvm::BasicBlock *> &blocks, raw_ostream &out,
+//                   SmallString<8> prefix) {
+//     unsigned line = 0;
+//     llvm::StringRef file;
+//     for (auto *bb : blocks) {
+//         for (auto &instruction : *bb) {
+//             MDNode *n = instruction.getMetadata("dbg");
+//             if (!n) {
+//                 continue;
+//             }
+//             DebugLoc Loc(n);
+//             if (Loc->getLine() != line || Loc->getFilename() != file) {
+//                 line = Loc->getLine();
+//                 file = Loc->getFilename();
+//                 out << prefix << "- " << file.str() << "," << line << "\n";
+//             }
+//         }
+//     }
+// }
 
 bool EPPDecode::runOnModule(Module &M) {
 
@@ -89,8 +89,7 @@ bool EPPDecode::runOnModule(Module &M) {
 
             // Add a path data struct for each path we find in the
             // profile. For each struct only initialize the Id and
-            // Frequency fields. We will lazily initialize the decoded
-            // block vector as required.
+            // Frequency fields. 
             DecodeCache[FPtr].push_back({PathId, PathExecFreq});
         }
     }
@@ -129,16 +128,17 @@ llvm::SmallVector<Path, 16> EPPDecode::getPaths(llvm::Function &F,
     return DecodeCache[&F];
 }
 
-pair<PathType, vector<llvm::BasicBlock *>>
+pair<PathType, vector<BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
-    vector<llvm::BasicBlock *> Sequence;
+    vector<BasicBlock *> Sequence;
     auto *Position = &F.getEntryBlock();
     //auto &ACFG     = Enc.ACFG;
     
     auto &AG = Enc.AG;
 
-    DEBUG(errs() << "Decode Called On: " << pathID << "\n");
+    (errs() << "Decode Called On: " << pathID << "\n");
 
+    //AG.printWeights();
     //vector<Edge> SelectedEdges;
     vector<EdgePtr> SelectedEdges;
     while (true) {
@@ -148,21 +148,21 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
         APInt Wt(128, 0, true);
         //Edge Select = {nullptr, nullptr};
         EdgePtr Select = nullptr;
-        DEBUG(errs() << Position->getName() << " (\n");
+        (errs() << Position->getName() << " (\n");
         //for (auto *Tgt : ACFG.succs(Position)) {
         for (auto &Edge : AG.succs(Position)) {
             //auto EWt = ACFG[{Position, Tgt}];
             auto EWt = AG.getEdgeWeight(Edge);
-            DEBUG(errs() << "\t" << Edge->tgt->getName() << " [" << EWt << "]\n");
             if (EWt.uge(Wt) &&
                 EWt.ule(pathID)) {
+                (errs() << "\t" << Edge->tgt->getName() << " [" << EWt << "]\n");
                 //Select = {Position, Tgt};
                 Select = Edge;
                 //Wt     = ACFG[{Position, Tgt}];
                 Wt = EWt;
             }
         }
-        DEBUG(errs() << " )\n\n\n");
+        (errs() << " )\n\n\n");
 
         SelectedEdges.push_back(Select);
         //Position = TGT(Select);
@@ -176,15 +176,15 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
     //auto FakeEdges = ACFG.getFakeEdges();
 
 #define SET_BIT(n, x) (n |= 1ULL << x)
-     uint64_t Type = 0;
-     //if (FakeEdges.count(SelectedEdges.front())) {
-     if (!SelectedEdges.front()->real) {
-         SET_BIT(Type, 0);
-     }
-     //if (FakeEdges.count(SelectedEdges.back())) {
-     if (!SelectedEdges.back()->real) {
-         SET_BIT(Type, 1);
-     }
+    uint64_t Type = 0;
+    //if (FakeEdges.count(SelectedEdges.front())) {
+    if (!SelectedEdges.front()->real) {
+        SET_BIT(Type, 0);
+    }
+    //if (FakeEdges.count(SelectedEdges.back())) {
+    if (!SelectedEdges.back()->real) {
+        SET_BIT(Type, 1);
+    }
 #undef SET_BIT
 
     return {static_cast<PathType>(Type),

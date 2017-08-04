@@ -171,7 +171,7 @@ void EPPEncode::encode(Function &F) {
     //auto Entry = POB.back(), Exit = POB.front();
     auto BackEdges = getBackEdges(&F.getEntryBlock());
 
-    DenseSet<std::pair<const BasicBlock *, const BasicBlock *>> SegmentEdges;
+    SetVector<std::pair<const BasicBlock *, const BasicBlock *>> SegmentEdges;
 
     // Add real edges
     for (auto &BB : AG.nodes()) {
@@ -193,41 +193,6 @@ void EPPEncode::encode(Function &F) {
 
     AG.segment(SegmentEdges);
 
-    // If the function has only one basic block, then there are no edges added.
-    // Handle this case separately by telling the AltCFG structure.
-
-    //if (Entry == Exit) {
-        //ACFG.add(Entry);
-    //}
-
-
-    //for (auto &B : POB) {
-        //APInt pathCount(128, 0, true);
-
-        //if (isFunctionExiting(B))
-            //pathCount = 1;
-
-        //for (auto &S : ACFG.succs(B)) {
-            //ACFG[{B, S}] = pathCount;
-            //if (numPaths.count(S) == 0)
-                //numPaths.insert(make_pair(S, APInt(128, 0, true)));
-
-            //// This is the only place we need to check for overflow.
-            //bool Ov   = false;
-            //pathCount = pathCount.sadd_ov(numPaths[S], Ov);
-            //if (Ov) {
-                //report_fatal_error("Integer Overflow");
-            //}
-        //}
-        //numPaths.insert({B, pathCount});
-    //}
-
-    //if (numPaths[Entry].getLimitedValue() == ~0ULL) { // && !wideCounter) {
-        //report_fatal_error("Numpaths greater than 2^64, please use -w option "
-                           //"for 128 bit counters");
-    //}
-
-    //llvm::DenseMap<llvm::BasicBlock *, llvm::APInt> numPathsA;
     for (auto &B : AG.nodes()) {
         APInt pathCount(128, 0, true);
 
@@ -250,10 +215,10 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-//    error_code EC;
-//    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
-//    AG.dot(out);
-//    out.close();
+    error_code EC;
+    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
+    AG.dot(out);
+    out.close();
 
 
     //raw_fd_ostream out2("acfg.dot", EC, sys::fs::F_Text);

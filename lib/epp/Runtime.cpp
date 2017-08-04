@@ -46,6 +46,7 @@ extern "C" {
 void EPP(init)() {}
 
 void EPP(logPath)(uint64_t Val, uint64_t FunctionId) {
+    printf("log: %lu\n", Val);
     Data.log(Val, FunctionId);
 }
 
