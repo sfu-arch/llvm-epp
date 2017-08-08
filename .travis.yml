@@ -13,8 +13,10 @@ before_script:
 - tar xf clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04.tar.xz
 - export PATH=${PWD}/clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04/bin:$PATH
 - cmake -DLLVM_DIR=clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04/share/llvm/cmake/ .
+- sudo pip install lit
 script:
-- make VERBOSE=1
+- make -j4 VERBOSE=1
+- lit test
 branches:
   only:
   - master
