@@ -16,7 +16,7 @@ before_script:
 - sudo pip install lit
 script:
 - make -j4 VERBOSE=1
-- lit test
+- lit test -v
 branches:
   only:
   - master
