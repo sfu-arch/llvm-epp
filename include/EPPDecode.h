@@ -38,7 +38,6 @@ struct EPPDecode : public llvm::ModulePass {
     virtual bool runOnModule(llvm::Module &m) override;
     bool doInitialization(llvm::Module &m) override;
 
-    SmallVector<Path, 16> getPaths(llvm::Function &F);
     void getPathInfo(uint32_t FunctionId, Path& Info);
 
     std::pair<PathType, std::vector<llvm::BasicBlock *>>

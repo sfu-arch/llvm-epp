@@ -49,34 +49,6 @@ void EPPDecode::getPathInfo(uint32_t FunctionId, Path &Info) {
     Info.Blocks    = R.second;
 }
 
-SmallVector<Path, 16> EPPDecode::getPaths(llvm::Function &F) {
-
-    EPPEncode &Enc = getAnalysis<EPPEncode>(F);
-    assert(DecodeCache.count(&F) != 0 && "Function not found!");
-
-    // Return the predecoded paths if they are present in the cache.
-    // The check is based on the fact that there exists at least one block
-    // in the path thus the size of the SmallVector is non-zero. Also
-    // if one path is decoded, then all paths are decoded for a function.
-
-    if (DecodeCache[&F].front().Blocks.size() == 0) {
-        for (auto &P : DecodeCache[&F]) {
-            auto R   = decode(F, P.Id, Enc);
-            P.Blocks = R.second;
-            P.Type   = R.first;
-        }
-    }
-
-    auto &R = DecodeCache[&F];
-
-    // Sort the paths in descending order of their frequency
-    // If the frequency is same, descending order of id (id cannot be same)
-    sort(R.begin(), R.end(), [](const Path &P1, const Path &P2) {
-        return (P1.Freq > P2.Freq) || (P1.Freq == P2.Freq && P1.Id.uge(P2.Id));
-    });
-
-    return DecodeCache[&F];
-}
 
 pair<PathType, vector<BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &E) {
