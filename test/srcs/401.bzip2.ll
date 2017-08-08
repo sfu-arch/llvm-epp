@@ -2,7 +2,7 @@
 
 ; RUN: llvm-as %s -o %t.bc 
 ; RUN: llvm-epp %t.bc -o %t.profile
-; RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt 2> %t.compile 
+; RUN: clang -O3 -v %t.epp.bc -o %t-exec -lepp-rt 2> %t.compile 
 
 target datalayout = "e-m:e-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"

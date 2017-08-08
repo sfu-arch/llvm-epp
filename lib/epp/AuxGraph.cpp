@@ -1,14 +1,13 @@
 #define DEBUG_TYPE "epp_auxg"
-#include "AuxGraph.h" 
+#include "AuxGraph.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/SetVector.h"
 #include "llvm/Analysis/CFG.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/Debug.h"
-#include <vector>
+#include "llvm/Support/raw_ostream.h"
 #include <set>
-
+#include <vector>
 
 using namespace std;
 using namespace aux;
@@ -107,20 +106,18 @@ SmallVector<BasicBlock *, 32> postOrder(Function &F) {
 
     return PostOrderBlocks;
 }
-
 }
 
 void AuxGraph::printWeights() {
-    for(auto &V : Weights) {
-        errs() << V.first->src->getName() << "-" << V.first->tgt->getName() 
-                << ": " << V.second << "\n";
+    for (auto &V : Weights) {
+        errs() << V.first->src->getName() << "-" << V.first->tgt->getName()
+               << ": " << V.second << "\n";
     }
 }
 
-
 /// Construct the auxiliary graph representation from the original
-/// function control flow graph. At this stage the CFG and the 
-/// AuxGraph are the same graph. 
+/// function control flow graph. At this stage the CFG and the
+/// AuxGraph are the same graph.
 void AuxGraph::init(Function &F) {
     Nodes = postOrder(F);
     for (auto &BB : Nodes) {
@@ -130,50 +127,55 @@ void AuxGraph::init(Function &F) {
     }
 
     /// Special case when there is only 1 basic block in the function
-    if(Nodes.size() == 1) {
+    if (Nodes.size() == 1) {
         auto *src = Nodes.front();
-        EdgeList.insert({src, SmallVector<EdgePtr,4>()});
+        EdgeList.insert({src, SmallVector<EdgePtr, 4>()});
     }
 }
 
 /// Add a new edge to the edge list. This method is only used for
-/// adding real edges by the constructor. 
-void AuxGraph::add(BasicBlock *src, BasicBlock *tgt) { 
-    if(EdgeList.count(src) == 0) {
-        EdgeList.insert({src, SmallVector<EdgePtr,4>()});
+/// adding real edges by the constructor.
+void AuxGraph::add(BasicBlock *src, BasicBlock *tgt) {
+    if (EdgeList.count(src) == 0) {
+        EdgeList.insert({src, SmallVector<EdgePtr, 4>()});
     }
     EdgeList[src].push_back(make_shared<Edge>(src, tgt));
 }
 
 /// List of edges to be *segmented*. A segmented edge is an edge which
-/// exists in the original CFG but is replaced by two edges in the 
+/// exists in the original CFG but is replaced by two edges in the
 /// AuxGraph. An edge from A->B, is replaced by {A->Exit, Entry->B}.
-/// An edge can only be segmented once. This 
-void AuxGraph::segment(SetVector<pair<const BasicBlock *, const BasicBlock *>> &List) {
-    SmallVector<EdgePtr, 4> SegmentList; 
+/// An edge can only be segmented once. This
+void AuxGraph::segment(
+    SetVector<pair<const BasicBlock *, const BasicBlock *>> &List) {
+    SmallVector<EdgePtr, 4> SegmentList;
     /// Move the internal EdgePtr from the EdgeList to the SegmentList
-    for(auto &L : List) {
-        auto *Src = L.first , *Tgt = L.second;
-        assert(EdgeList.count(Src) && "Source basicblock not found in edge list.");
+    for (auto &L : List) {
+        auto *Src = L.first, *Tgt = L.second;
+        assert(EdgeList.count(Src) &&
+               "Source basicblock not found in edge list.");
         auto &Edges = EdgeList[Src];
-        auto it = find_if(Edges.begin(), Edges.end(), [&Tgt](EdgePtr& P) {
-                return P->tgt == Tgt; });
-        assert(it != Edges.end() && "Target basicblock not found in edge list.");
-        assert(SegmentMap.count(*it) == 0 && "An edge can only be segmented once.");
+        auto it     = find_if(Edges.begin(), Edges.end(),
+                          [&Tgt](EdgePtr &P) { return P->tgt == Tgt; });
+        assert(it != Edges.end() &&
+               "Target basicblock not found in edge list.");
+        assert(SegmentMap.count(*it) == 0 &&
+               "An edge can only be segmented once.");
         SegmentList.push_back(move(*it));
         Edges.erase(it);
-    }  
+    }
 
-    /// Add two new edges for each edge in the SegmentList. Update the EdgeList. 
+    /// Add two new edges for each edge in the SegmentList. Update the EdgeList.
     /// An edge from A->B, is replaced by {A->Exit, Entry->B}.
     auto &Entry = Nodes.back(), &Exit = Nodes.front();
-    for(auto &S : SegmentList) {
+    for (auto &S : SegmentList) {
         auto *A = S->src, *B = S->tgt;
-        //errs() << "Segmenting: " << A->getName() << "-" << B->getName() << "\n";
-        auto AExit = make_shared<Edge>(A, Exit, false);
+        // errs() << "Segmenting: " << A->getName() << "-" << B->getName() <<
+        // "\n";
+        auto AExit  = make_shared<Edge>(A, Exit, false);
         auto EntryB = make_shared<Edge>(Entry, B, false);
-        //errs() << "Output: " << A->getName() << "-" << Exit->getName()
-                //<< "," << Entry->getName() << "-" << B->getName() << "\n";
+        // errs() << "Output: " << A->getName() << "-" << Exit->getName()
+        //<< "," << Entry->getName() << "-" << B->getName() << "\n";
         EdgeList[A].push_back(AExit);
         EdgeList[Entry].push_back(EntryB);
         SegmentMap.insert({S, {AExit, EntryB}});
@@ -184,28 +186,26 @@ void AuxGraph::segment(SetVector<pair<const BasicBlock *, const BasicBlock *>> &
 SmallVector<pair<EdgePtr, APInt>, 16> AuxGraph::getWeights() {
     SmallVector<pair<EdgePtr, APInt>, 16> Result;
     copy_if(Weights.begin(), Weights.end(), back_inserter(Result),
-            [](const pair<EdgePtr, APInt> &V) { return V.first->real && 
-                V.second.ne(APInt(128, 0, true));});
+            [](const pair<EdgePtr, APInt> &V) {
+                return V.first->real && V.second.ne(APInt(128, 0, true));
+            });
     return Result;
 }
 
 /// Get the segment mapping
-std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>> 
+std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>>
 AuxGraph::getSegmentMap() {
     return SegmentMap;
 }
 
 /// Get weight for a specific edge.
-APInt AuxGraph::getEdgeWeight(const EdgePtr &Ptr) {
-    return Weights[Ptr];
-}
+APInt AuxGraph::getEdgeWeight(const EdgePtr &Ptr) { return Weights[Ptr]; }
 
-/// Return the successors edges of a basicblock from the Auxiliary Graph. 
-SmallVector<EdgePtr, 4> AuxGraph::succs(BasicBlock *B) {
-    return EdgeList[B];
-} 
+/// Return the successors edges of a basicblock from the Auxiliary Graph.
+SmallVector<EdgePtr, 4> AuxGraph::succs(BasicBlock *B) { return EdgeList[B]; }
 
-/// Print out the AuxGraph in Graphviz format. Defaults to printing to llvm::errs()
+/// Print out the AuxGraph in Graphviz format. Defaults to printing to
+/// llvm::errs()
 void AuxGraph::dot(raw_ostream &os = errs()) {
     os << "digraph \"AuxGraph\" {\n label=\"AuxGraph\";\n";
     for (auto &N : Nodes) {
@@ -213,17 +213,18 @@ void AuxGraph::dot(raw_ostream &os = errs()) {
            << "\"];\n";
     }
     for (auto &EL : EdgeList) {
-        for(auto &L : EL.getSecond()) {
-            os << "\tNode" << EL.getFirst() << " -> Node" << L->tgt << " [style=solid,";
-                if(!L->real) os << "color=\"red\",";
-                os << " label=\"" << Weights[L] << "\"];\n";
+        for (auto &L : EL.getSecond()) {
+            os << "\tNode" << EL.getFirst() << " -> Node" << L->tgt
+               << " [style=solid,";
+            if (!L->real)
+                os << "color=\"red\",";
+            os << " label=\"" << Weights[L] << "\"];\n";
         }
     }
     os << "}\n";
 }
 
-/// Clear all internal state; to be called by the releaseMemory function 
+/// Clear all internal state; to be called by the releaseMemory function
 void AuxGraph::clear() {
-    Nodes.clear(), EdgeList.clear(), 
-        SegmentMap.clear(), Weights.clear();
+    Nodes.clear(), EdgeList.clear(), SegmentMap.clear(), Weights.clear();
 }

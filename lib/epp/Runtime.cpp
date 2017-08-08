@@ -19,7 +19,7 @@ list<shared_ptr<TLSDataTy>> GlobalEPPDataList;
 mutex tlsMutex;
 
 class EPP(data) {
-    //thread::id tid;
+    // thread::id tid;
     shared_ptr<TLSDataTy> Ptr;
 
   public:
@@ -29,7 +29,7 @@ class EPP(data) {
     }
 
     EPP(data)() {
-        //tid = this_thread::get_id();
+        // tid = this_thread::get_id();
         // cout << "ctor " << tid << endl;
 
         lock_guard<mutex> lock(tlsMutex);
@@ -39,9 +39,8 @@ class EPP(data) {
     }
 };
 
-
-/// Why is this unique_ptr? 
-/// 
+/// Why is this unique_ptr?
+///
 
 thread_local unique_ptr<EPP(data)> Data = make_unique<EPP(data)>();
 
@@ -50,7 +49,7 @@ extern "C" {
 void EPP(init)() {}
 
 void EPP(logPath)(uint64_t Val, uint64_t FunctionId) {
-    if(Data)
+    if (Data)
         Data->log(Val, FunctionId);
 }
 

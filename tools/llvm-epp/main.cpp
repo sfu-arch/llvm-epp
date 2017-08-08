@@ -94,10 +94,10 @@ void instrumentModule(Module &module) {
 
     // Build up all of the passes that we want to run on the module.
     legacy::PassManager pm;
-    //pm.add(new llvm::AssumptionCacheTracker());
+    // pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
-    //pm.add(llvm::createBasicAAWrapperPass());
-    //pm.add(createTypeBasedAAWrapperPass());
+    // pm.add(llvm::createBasicAAWrapperPass());
+    // pm.add(createTypeBasedAAWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::SplitLandingPadPredsPass());
     pm.add(new LoopInfoWrapperPass());
@@ -117,10 +117,10 @@ void instrumentModule(Module &module) {
 
 void interpretResults(Module &module, std::string filename) {
     legacy::PassManager pm;
-    //pm.add(new llvm::AssumptionCacheTracker());
+    // pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
-    //pm.add(createBasicAAWrapperPass());
-    //pm.add(createTypeBasedAAWrapperPass());
+    // pm.add(createBasicAAWrapperPass());
+    // pm.add(createTypeBasedAAWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::SplitLandingPadPredsPass());
     pm.add(new LoopInfoWrapperPass());
@@ -129,7 +129,6 @@ void interpretResults(Module &module, std::string filename) {
     pm.add(createVerifierPass());
     pm.run(module);
 }
-
 }
 
 int main(int argc, char **argv, const char **env) {

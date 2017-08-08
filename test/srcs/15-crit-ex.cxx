@@ -1,16 +1,13 @@
 #include <cstdio>
+#include <iostream>
 
-
-double foo(int x) {
-    if(x == 2) {
-        throw "Exception";
-    }
-    return 1*x;
-}
+// This tests for instrumentation along critical edges where
+// the destination of the edge is an exception handling pad block.
 
 int main(int argc, char* argv[]) { 
     try {
-        foo(argc);
+        std::cout << "test";
+        std::cout << "test2";
     } catch(...) {
         printf("Caught an exception.");
     }
@@ -18,7 +15,7 @@ int main(int argc, char* argv[]) {
 }
 
 // RUN: clang -c -g -emit-llvm %s -o %t.1.bc 
-// RUN: opt -instnamer %t.1.bc -o %t.bc
+// RUN: opt -O2 -instnamer %t.1.bc -o %t.bc
 // RUN: llvm-epp %t.bc -o %t.profile 2> %t.epp.log
 // RUN: clang -v %t.epp.bc -o %t-exec -lepp-rt -lstdc++ 2> %t.compile 
 // RUN: %t-exec > %t.log

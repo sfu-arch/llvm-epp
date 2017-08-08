@@ -16,6 +16,7 @@
 
 #include "EPPEncode.h"
 
+#include "AuxGraph.h"
 #include <algorithm>
 #include <cassert>
 #include <fstream>
@@ -23,13 +24,11 @@
 #include <stack>
 #include <unordered_set>
 #include <vector>
-#include "AuxGraph.h"
 
 using namespace aux;
 using namespace llvm;
 using namespace epp;
 using namespace std;
-
 
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
@@ -50,7 +49,7 @@ static bool isFunctionExiting(BasicBlock *BB) {
 void EPPEncode::releaseMemory() {
     LI = nullptr;
     numPaths.clear();
-    //ACFG.clear();
+    // ACFG.clear();
     AG.clear();
 }
 
@@ -188,7 +187,7 @@ void EPPEncode::encode(Function &F) {
             pathCount = 1;
 
         for (auto &SE : AG.succs(B)) {
-            AG[SE] = pathCount;
+            AG[SE]  = pathCount;
             auto *S = SE->tgt;
             if (numPaths.count(S) == 0)
                 numPaths.insert(make_pair(S, APInt(128, 0, true)));
@@ -207,7 +206,6 @@ void EPPEncode::encode(Function &F) {
     // raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
     // AG.dot(out);
     // out.close();
-
 }
 
 char EPPEncode::ID = 0;

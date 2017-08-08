@@ -26,7 +26,6 @@ inline bool isExitBlock(BasicBlock *BB) {
         return true;
     return false;
 }
-
 }
 
 bool EPPDecode::doInitialization(Module &M) { return false; }
@@ -69,7 +68,7 @@ bool EPPDecode::runOnModule(Module &M) {
 
             // Add a path data struct for each path we find in the
             // profile. For each struct only initialize the Id and
-            // Frequency fields. 
+            // Frequency fields.
             DecodeCache[FPtr].push_back({PathId, PathExecFreq});
         }
     }
@@ -112,7 +111,7 @@ pair<PathType, vector<BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
     vector<BasicBlock *> Sequence;
     auto *Position = &F.getEntryBlock();
-    
+
     auto &AG = Enc.AG;
 
     DEBUG(errs() << "Decode Called On: " << pathID << "\n");
@@ -127,11 +126,11 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
         DEBUG(errs() << Position->getName() << " (\n");
         for (auto &Edge : AG.succs(Position)) {
             auto EWt = AG.getEdgeWeight(Edge);
-            if (EWt.uge(Wt) &&
-                EWt.ule(pathID)) {
-                DEBUG(errs() << "\t" << Edge->tgt->getName() << " [" << EWt << "]\n");
+            if (EWt.uge(Wt) && EWt.ule(pathID)) {
+                DEBUG(errs() << "\t" << Edge->tgt->getName() << " [" << EWt
+                             << "]\n");
                 Select = Edge;
-                Wt = EWt;
+                Wt     = EWt;
             }
         }
         DEBUG(errs() << " )\n\n\n");
@@ -143,7 +142,6 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
 
     if (SelectedEdges.empty())
         return {RIRO, Sequence};
-
 
 #define SET_BIT(n, x) (n |= 1ULL << x)
     uint64_t Type = 0;
