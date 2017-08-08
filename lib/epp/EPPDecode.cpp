@@ -28,17 +28,17 @@ inline bool isExitBlock(BasicBlock *BB) {
 }
 }
 
-bool EPPDecode::doInitialization(Module &M) { 
+bool EPPDecode::doInitialization(Module &M) {
     uint32_t Id = 0;
     for (auto &F : M) {
         FunctionIdToPtr[Id++] = &F;
     }
-    return false; 
+    return false;
 }
 
 bool EPPDecode::runOnModule(Module &M) {
 
-    //DenseMap<uint32_t, Function *> FunctionIdToPtr;
+    // DenseMap<uint32_t, Function *> FunctionIdToPtr;
 
     // ifstream InFile(filename.c_str(), ios::in);
     // assert(InFile.is_open() && "Could not open file for reading");
@@ -52,7 +52,6 @@ bool EPPDecode::runOnModule(Module &M) {
     //     } catch (exception &E) {
     //         report_fatal_error("Invalid profile format");
     //     }
-
 
     //     Function *FPtr = FunctionIdToPtr[FunctionId];
     //     assert(FPtr && "Invalid function id in path profile");
@@ -81,12 +80,12 @@ bool EPPDecode::runOnModule(Module &M) {
     return false;
 }
 
-void EPPDecode::getPathInfo(uint32_t FunctionId, Path& Info) {
-    auto &F = *FunctionIdToPtr[FunctionId];
+void EPPDecode::getPathInfo(uint32_t FunctionId, Path &Info) {
+    auto &F        = *FunctionIdToPtr[FunctionId];
     EPPEncode &Enc = getAnalysis<EPPEncode>(F);
-    auto R = decode(F, Info.Id, Enc);
-    Info.Type = R.first;
-    Info.Blocks = R.second;
+    auto R         = decode(F, Info.Id, Enc);
+    Info.Type      = R.first;
+    Info.Blocks    = R.second;
 }
 
 SmallVector<Path, 16> EPPDecode::getPaths(llvm::Function &F) {

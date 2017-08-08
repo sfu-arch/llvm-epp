@@ -21,12 +21,12 @@ using namespace std;
 
 extern cl::opt<string> profile;
 
-bool EPPPathPrinter::doInitialization(Module &M) { 
+bool EPPPathPrinter::doInitialization(Module &M) {
     uint32_t Id = 0;
     for (auto &F : M) {
         FunctionIdToPtr[Id++] = &F;
     }
-    return false; 
+    return false;
 }
 
 void printPathSrc(vector<BasicBlock *> &blocks, raw_ostream &out,
@@ -66,11 +66,13 @@ bool EPPPathPrinter::runOnModule(Module &M) {
             SS >> FunctionId >> NumberOfPaths;
 
             // If no paths have been executed for this function,
-            // then skip it altogether. 
-            
-            if(NumberOfPaths == 0) continue;
+            // then skip it altogether.
 
-            errs() << "- name: " << FunctionIdToPtr[FunctionId]->getName() << "\n";
+            if (NumberOfPaths == 0)
+                continue;
+
+            errs() << "- name: " << FunctionIdToPtr[FunctionId]->getName()
+                   << "\n";
             errs() << "  num_exec_paths: " << NumberOfPaths << "\n";
 
             vector<Path> Paths;
@@ -81,7 +83,7 @@ bool EPPPathPrinter::runOnModule(Module &M) {
                 uint64_t PathExecFreq;
                 SS >> PathIdStr >> PathExecFreq;
                 APInt PathId(128, StringRef(PathIdStr), 16);
-                
+
                 // Add a path data struct for each path we find in the
                 // profile. For each struct only initialize the Id and
                 // Frequency fields.
@@ -91,12 +93,15 @@ bool EPPPathPrinter::runOnModule(Module &M) {
             }
 
             // Sort the paths in descending order of their frequency
-            // If the frequency is same, descending order of id (id cannot be same)
-            sort(Paths.begin(), Paths.end(), [](const Path &P1, const Path &P2) {
-                return (P1.Freq > P2.Freq) || (P1.Freq == P2.Freq && P1.Id.uge(P2.Id));
-            });
+            // If the frequency is same, descending order of id (id cannot be
+            // same)
+            sort(Paths.begin(), Paths.end(),
+                 [](const Path &P1, const Path &P2) {
+                     return (P1.Freq > P2.Freq) ||
+                            (P1.Freq == P2.Freq && P1.Id.uge(P2.Id));
+                 });
 
-            for(auto &P : Paths) {
+            for (auto &P : Paths) {
                 SmallString<16> PathId;
                 P.Id.toStringSigned(PathId, 16);
                 errs() << "  - path: " << PathId << "\n";
@@ -108,7 +113,6 @@ bool EPPPathPrinter::runOnModule(Module &M) {
     }
 
     InFile.close();
-
 
     // for (auto &F : M) {
     //     if (!F.isDeclaration()) {
