@@ -12,6 +12,7 @@ before_script:
 - wget http://releases.llvm.org/3.8.1/clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04.tar.xz
 - tar xf clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04.tar.xz
 - export PATH=${PWD}/clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04/bin:$PATH
+- export LD_LIBRARY_PATH=${PWD}/clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04/lib
 - cmake -DLLVM_DIR=clang+llvm-3.8.1-x86_64-linux-gnu-ubuntu-14.04/share/llvm/cmake/ .
 - sudo pip install lit
 script:
