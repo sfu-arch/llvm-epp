@@ -26,6 +26,7 @@ inline bool isExitBlock(BasicBlock *BB) {
         return true;
     return false;
 }
+
 }
 
 bool EPPDecode::doInitialization(Module &M) {
@@ -37,46 +38,6 @@ bool EPPDecode::doInitialization(Module &M) {
 }
 
 bool EPPDecode::runOnModule(Module &M) {
-
-    // DenseMap<uint32_t, Function *> FunctionIdToPtr;
-
-    // ifstream InFile(filename.c_str(), ios::in);
-    // assert(InFile.is_open() && "Could not open file for reading");
-
-    // string Line;
-    // while (getline(InFile, Line)) {
-    //     uint32_t FunctionId = 0, NumberOfPaths = 0;
-    //     try {
-    //         stringstream SS(Line);
-    //         SS >> FunctionId >> NumberOfPaths;
-    //     } catch (exception &E) {
-    //         report_fatal_error("Invalid profile format");
-    //     }
-
-    //     Function *FPtr = FunctionIdToPtr[FunctionId];
-    //     assert(FPtr && "Invalid function id in path profile");
-
-    //     if (DecodeCache.count(FPtr) == 0) {
-    //         DecodeCache.insert({FPtr, SmallVector<Path, 16>()});
-    //     }
-
-    //     for (uint32_t I = 0; I < NumberOfPaths; I++) {
-    //         getline(InFile, Line);
-    //         stringstream SS(Line);
-    //         string PathIdStr;
-    //         uint64_t PathExecFreq;
-    //         SS >> PathIdStr >> PathExecFreq;
-    //         APInt PathId(128, StringRef(PathIdStr), 16);
-
-    //         // Add a path data struct for each path we find in the
-    //         // profile. For each struct only initialize the Id and
-    //         // Frequency fields.
-    //         DecodeCache[FPtr].push_back({PathId, PathExecFreq});
-    //     }
-    // }
-
-    // InFile.close();
-
     return false;
 }
 

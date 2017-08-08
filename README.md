@@ -8,8 +8,7 @@ This tool is still in alpha and under active development.
 ## Requires 
 
 1. LLVM 3.8
-2. llvm-lit 
-3. gcc-5
+2. gcc-5
 
 ## Build 
 
@@ -23,7 +22,7 @@ To run the tests, install [lit](https://pypi.python.org/pypi/lit) from the pytho
 
 1. `pip install lit`
 2. `cd build`
-3. `lit test/srcs`  
+3. `lit test`  
 
 ## Documentation
 
@@ -39,8 +38,7 @@ To generate documentation, install [graphviz](http://www.graphviz.org/) and [dox
 
 ## Known Issues 
 
-1. C++ Exceptions  
-2. Support `setjmp` and `longjmp`
+1. Instrumentation cannot be placed along computed indirect branch target edges. [This](http://blog.llvm.org/2010/01/address-of-label-and-indirect-branches.html) blog post describes the issue under the section "How does this extension interact with critical edge splitting?".
 
 ## License 
 

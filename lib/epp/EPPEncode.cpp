@@ -21,7 +21,7 @@
 #include <cassert>
 #include <fstream>
 #include <set>
-#include <stack>
+//#include <stack>
 #include <unordered_set>
 #include <vector>
 
@@ -33,23 +33,26 @@ using namespace std;
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
 
-bool EPPEncode::runOnFunction(Function &func) {
-    LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
-    encode(func);
-    return false;
-}
+namespace {
 
-static bool isFunctionExiting(BasicBlock *BB) {
+bool isFunctionExiting(BasicBlock *BB) {
     if (BB->getTerminator()->getNumSuccessors() == 0)
         return true;
 
     return false;
 }
 
+}
+
+bool EPPEncode::runOnFunction(Function &F) {
+    LI = &getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+    encode(F);
+    return false;
+}
+
 void EPPEncode::releaseMemory() {
     LI = nullptr;
     numPaths.clear();
-    // ACFG.clear();
     AG.clear();
 }
 
