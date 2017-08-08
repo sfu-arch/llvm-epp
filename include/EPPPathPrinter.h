@@ -15,7 +15,7 @@ namespace epp {
 
 struct EPPPathPrinter : public llvm::ModulePass {
     static char ID;
-
+    DenseMap<uint32_t, Function *> FunctionIdToPtr;
     EPPPathPrinter() : llvm::ModulePass(ID) {}
 
     virtual void getAnalysisUsage(llvm::AnalysisUsage &au) const override {

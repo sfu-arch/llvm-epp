@@ -28,59 +28,70 @@ inline bool isExitBlock(BasicBlock *BB) {
 }
 }
 
-bool EPPDecode::doInitialization(Module &M) { return false; }
-
-bool EPPDecode::runOnModule(Module &M) {
-
-    DenseMap<uint32_t, Function *> FunctionIdToPtr;
+bool EPPDecode::doInitialization(Module &M) { 
     uint32_t Id = 0;
     for (auto &F : M) {
         FunctionIdToPtr[Id++] = &F;
     }
+    return false; 
+}
 
-    ifstream InFile(filename.c_str(), ios::in);
-    assert(InFile.is_open() && "Could not open file for reading");
+bool EPPDecode::runOnModule(Module &M) {
 
-    string Line;
-    while (getline(InFile, Line)) {
-        uint32_t FunctionId = 0, NumberOfPaths = 0;
-        try {
-            stringstream SS(Line);
-            SS >> FunctionId >> NumberOfPaths;
-        } catch (exception &E) {
-            report_fatal_error("Invalid profile format");
-        }
+    //DenseMap<uint32_t, Function *> FunctionIdToPtr;
 
-        Function *FPtr = FunctionIdToPtr[FunctionId];
-        assert(FPtr && "Invalid function id in path profile");
+    // ifstream InFile(filename.c_str(), ios::in);
+    // assert(InFile.is_open() && "Could not open file for reading");
 
-        if (DecodeCache.count(FPtr) == 0) {
-            DecodeCache.insert({FPtr, SmallVector<Path, 16>()});
-        }
+    // string Line;
+    // while (getline(InFile, Line)) {
+    //     uint32_t FunctionId = 0, NumberOfPaths = 0;
+    //     try {
+    //         stringstream SS(Line);
+    //         SS >> FunctionId >> NumberOfPaths;
+    //     } catch (exception &E) {
+    //         report_fatal_error("Invalid profile format");
+    //     }
 
-        for (uint32_t I = 0; I < NumberOfPaths; I++) {
-            getline(InFile, Line);
-            stringstream SS(Line);
-            string PathIdStr;
-            uint64_t PathExecFreq;
-            SS >> PathIdStr >> PathExecFreq;
-            APInt PathId(128, StringRef(PathIdStr), 16);
 
-            // Add a path data struct for each path we find in the
-            // profile. For each struct only initialize the Id and
-            // Frequency fields.
-            DecodeCache[FPtr].push_back({PathId, PathExecFreq});
-        }
-    }
+    //     Function *FPtr = FunctionIdToPtr[FunctionId];
+    //     assert(FPtr && "Invalid function id in path profile");
 
-    InFile.close();
+    //     if (DecodeCache.count(FPtr) == 0) {
+    //         DecodeCache.insert({FPtr, SmallVector<Path, 16>()});
+    //     }
+
+    //     for (uint32_t I = 0; I < NumberOfPaths; I++) {
+    //         getline(InFile, Line);
+    //         stringstream SS(Line);
+    //         string PathIdStr;
+    //         uint64_t PathExecFreq;
+    //         SS >> PathIdStr >> PathExecFreq;
+    //         APInt PathId(128, StringRef(PathIdStr), 16);
+
+    //         // Add a path data struct for each path we find in the
+    //         // profile. For each struct only initialize the Id and
+    //         // Frequency fields.
+    //         DecodeCache[FPtr].push_back({PathId, PathExecFreq});
+    //     }
+    // }
+
+    // InFile.close();
 
     return false;
 }
 
-llvm::SmallVector<Path, 16> EPPDecode::getPaths(llvm::Function &F,
-                                                EPPEncode &Enc) {
+void EPPDecode::getPathInfo(uint32_t FunctionId, Path& Info) {
+    auto &F = *FunctionIdToPtr[FunctionId];
+    EPPEncode &Enc = getAnalysis<EPPEncode>(F);
+    auto R = decode(F, Info.Id, Enc);
+    Info.Type = R.first;
+    Info.Blocks = R.second;
+}
 
+SmallVector<Path, 16> EPPDecode::getPaths(llvm::Function &F) {
+
+    EPPEncode &Enc = getAnalysis<EPPEncode>(F);
     assert(DecodeCache.count(&F) != 0 && "Function not found!");
 
     // Return the predecoded paths if they are present in the cache.
@@ -108,11 +119,11 @@ llvm::SmallVector<Path, 16> EPPDecode::getPaths(llvm::Function &F,
 }
 
 pair<PathType, vector<BasicBlock *>>
-EPPDecode::decode(Function &F, APInt pathID, EPPEncode &Enc) {
+EPPDecode::decode(Function &F, APInt pathID, EPPEncode &E) {
     vector<BasicBlock *> Sequence;
     auto *Position = &F.getEntryBlock();
 
-    auto &AG = Enc.AG;
+    auto &AG = E.AG;
 
     DEBUG(errs() << "Decode Called On: " << pathID << "\n");
 

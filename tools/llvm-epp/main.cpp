@@ -124,7 +124,7 @@ void interpretResults(Module &module, std::string filename) {
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::SplitLandingPadPredsPass());
     pm.add(new LoopInfoWrapperPass());
-    pm.add(new epp::EPPDecode(filename));
+    pm.add(new epp::EPPDecode());
     pm.add(new epp::EPPPathPrinter());
     pm.add(createVerifierPass());
     pm.run(module);
