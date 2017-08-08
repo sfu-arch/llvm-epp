@@ -6,6 +6,7 @@ add_library(epp-inst
     AltCFG.cpp
     AuxGraph.cpp
     EPPPathPrinter.cpp
+    SplitLandingPadPredsPass.cpp
 )
 
 

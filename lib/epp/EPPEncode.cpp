@@ -23,11 +23,9 @@
 #include <stack>
 #include <unordered_set>
 #include <vector>
-
-// Testing
 #include "AuxGraph.h"
-using namespace aux;
 
+using namespace aux;
 using namespace llvm;
 using namespace epp;
 using namespace std;

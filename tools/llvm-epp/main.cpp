@@ -46,6 +46,7 @@
 
 #include "EPPPathPrinter.h"
 #include "EPPProfile.h"
+#include "SplitLandingPadPredsPass.h"
 
 using namespace std;
 using namespace llvm;
@@ -76,7 +77,9 @@ cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
 //     cl::value_desc("boolean"), cl::init(false),
 //     cl::cat(LLVMEppOptionCategory));
 
-static void saveModule(Module &m, StringRef filename) {
+namespace {
+
+void saveModule(Module &m, StringRef filename) {
     error_code EC;
     raw_fd_ostream out(filename.data(), EC, sys::fs::F_None);
 
@@ -87,15 +90,16 @@ static void saveModule(Module &m, StringRef filename) {
     WriteBitcodeToFile(&m, out);
 }
 
-static void instrumentModule(Module &module) {
+void instrumentModule(Module &module) {
 
     // Build up all of the passes that we want to run on the module.
     legacy::PassManager pm;
-    pm.add(new llvm::AssumptionCacheTracker());
+    //pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
-    pm.add(llvm::createBasicAAWrapperPass());
-    pm.add(createTypeBasedAAWrapperPass());
+    //pm.add(llvm::createBasicAAWrapperPass());
+    //pm.add(createTypeBasedAAWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
+    pm.add(new epp::SplitLandingPadPredsPass());
     pm.add(new LoopInfoWrapperPass());
     pm.add(new epp::EPPProfile());
     pm.add(createVerifierPass());
@@ -111,19 +115,21 @@ static void instrumentModule(Module &module) {
     saveModule(module, inPath);
 }
 
-static void interpretResults(Module &module, std::string filename) {
-
+void interpretResults(Module &module, std::string filename) {
     legacy::PassManager pm;
-    pm.add(new llvm::AssumptionCacheTracker());
+    //pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
-    pm.add(createBasicAAWrapperPass());
-    pm.add(createTypeBasedAAWrapperPass());
+    //pm.add(createBasicAAWrapperPass());
+    //pm.add(createTypeBasedAAWrapperPass());
     pm.add(createBreakCriticalEdgesPass());
+    pm.add(new epp::SplitLandingPadPredsPass());
     pm.add(new LoopInfoWrapperPass());
     pm.add(new epp::EPPDecode(filename));
     pm.add(new epp::EPPPathPrinter());
     pm.add(createVerifierPass());
     pm.run(module);
+}
+
 }
 
 int main(int argc, char **argv, const char **env) {

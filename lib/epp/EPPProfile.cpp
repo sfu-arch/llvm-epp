@@ -10,6 +10,7 @@
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
@@ -79,36 +80,61 @@ void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
     }
 }
 
-BasicBlock* interpose(BasicBlock *Src, BasicBlock *Tgt) {
-    auto &Ctx = Src->getContext();
-    //(errs() << "Split : " << Src->getName() << " " << Tgt->getName()
-                 //<< "\n");
 
-    // Sanity Checks
-    auto found = false;
-    for (auto S = succ_begin(Src), E = succ_end(Src); S != E; S++)
-        if (*S == Tgt)
-            found = true;
-    assert(found && "Could not find the edge to split");
 
-    auto *F  = Tgt->getParent();
-    auto *BB = BasicBlock::Create(Ctx, Src->getName() + ".intp", F);
+BasicBlock* interpose(BasicBlock *BB, BasicBlock *Succ, 
+        DominatorTree *DT = nullptr, LoopInfo *LI = nullptr) {
 
-    auto *T = Src->getTerminator();
-    T->replaceUsesOfWith(Tgt, BB);
+    //errs() << "Splitting: " << BB->getName() << "->" << Succ->getName() << "\n";
+    // auto *N = SplitEdge2(BB, Succ, DT, LI);
+    // if(find(succ_begin(BB), succ_end(BB), N) == succ_end(BB)) {
+    //    // FIXME: patch the edges in AuxGraph
+    //    // OR FIXME: write own interpose for only this part and copy in
+    //    // the code for split edge for the remaining cases.
+    //    errs() << "SplitPatch\n";
+    //    return Succ; 
+    // }
+    // return N;
 
-    BranchInst::Create(Tgt, BB);
+    unsigned SuccNum = GetSuccessorNumber(BB, Succ);
 
-    // Hoist all special instructions from the Tgt block
-    // to the new block. Rewrite the uses of the old instructions
-    // to use the instructions in the new block.
-
-    for (auto &I : vector<BasicBlock::iterator>(
-             Tgt->begin(), Tgt->getFirstInsertionPt())) {
-        I->moveBefore(BB->getTerminator());
+    // If this is a critical edge, let SplitCriticalEdge do it. (This does
+    // not deal with critical edges which terminate at ehpads)
+    TerminatorInst *LatchTerm = BB->getTerminator();
+    if (SplitCriticalEdge(LatchTerm, SuccNum, CriticalEdgeSplittingOptions(DT, LI)
+                .setPreserveLCSSA())) {
+      return LatchTerm->getSuccessor(SuccNum);
     }
 
-    return BB;
+    // If the edge isn't critical, then BB has a single successor or Succ has a
+    // single pred. Insert a new block or split the pred block.
+    if (BasicBlock *SP = Succ->getSinglePredecessor()) {
+      assert(SP == BB && "CFG broken");
+      auto *New = BasicBlock::Create(BB->getContext(), 
+              BB->getName() + ".intp", BB->getParent());
+
+      BB->getTerminator()->replaceUsesOfWith(Succ, New);
+      BranchInst::Create(Succ, New);
+
+      // Hoist all special instructions from the Tgt block
+      // to the new block. Rewrite the uses of the old instructions
+      // to use the instructions in the new block. This is used when the 
+      // edge being split has ehpad destination. 
+
+      for (auto &I : vector<BasicBlock::iterator>(
+               Succ->begin(), Succ->getFirstInsertionPt())) {
+          I->moveBefore(New->getTerminator());
+      }
+
+      return New;
+
+    }
+
+    // Otherwise, if BB has a single successor, successorsplit it at the bottom of the
+    // block.
+    assert(BB->getTerminator()->getNumSuccessors() == 1 &&
+           "Should have a single succ!");
+    return SplitBlock(BB, BB->getTerminator(), DT, LI);
 }
 
 void insertLogPath(BasicBlock *BB, uint64_t FuncId, 
@@ -193,13 +219,13 @@ bool EPPProfile::runOnModule(Module &Mod) {
     errs() << "# Instrumented Functions\n";
 
     for (auto &F : Mod) {
-        if (!F.isDeclaration()) {
-            errs() << "- name: " << F.getName() << "\n";
-            auto &Enc = getAnalysis<EPPEncode>(F);
-            errs() << "  num_paths: " << Enc.numPaths[&F.getEntryBlock()]
-                   << "\n";
-            instrument(F, Enc);
-        }
+        if(F.isDeclaration())
+            continue;
+        errs() << "- name: " << F.getName() << "\n";
+        auto &Enc = getAnalysis<EPPEncode>(F);
+        errs() << "  num_paths: " << Enc.numPaths[&F.getEntryBlock()]
+               << "\n";
+        instrument(F, Enc);
     }
     
     addCtorsAndDtors(Mod);

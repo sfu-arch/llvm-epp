@@ -34,4 +34,3 @@ int main()
 // RUN: llvm-epp %t.bc -o %t.profile
 // RUN: clang -std=c++11 -v %t.epp.bc -o %t-exec -lepp-rt -lpthread -lstdc++ 2> %t.compile 
 // RUN: %t-exec > %t.log
-// XFAIL: *
