@@ -26,7 +26,6 @@ inline bool isExitBlock(BasicBlock *BB) {
         return true;
     return false;
 }
-
 }
 
 bool EPPDecode::doInitialization(Module &M) {
@@ -37,9 +36,7 @@ bool EPPDecode::doInitialization(Module &M) {
     return false;
 }
 
-bool EPPDecode::runOnModule(Module &M) {
-    return false;
-}
+bool EPPDecode::runOnModule(Module &M) { return false; }
 
 void EPPDecode::getPathInfo(uint32_t FunctionId, Path &Info) {
     auto &F        = *FunctionIdToPtr[FunctionId];
@@ -48,7 +45,6 @@ void EPPDecode::getPathInfo(uint32_t FunctionId, Path &Info) {
     Info.Type      = R.first;
     Info.Blocks    = R.second;
 }
-
 
 pair<PathType, vector<BasicBlock *>>
 EPPDecode::decode(Function &F, APInt pathID, EPPEncode &E) {

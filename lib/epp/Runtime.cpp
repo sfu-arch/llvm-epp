@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cinttypes>
 #include <cstdint>
 #include <iostream>
@@ -5,6 +6,7 @@
 #include <map>
 #include <mutex>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 using namespace std;
@@ -13,13 +15,12 @@ using namespace std;
 
 extern uint32_t EPP(numberOfFunctions);
 
-typedef vector<map<uint64_t, uint64_t>> TLSDataTy;
+typedef vector<unordered_map<uint64_t, uint64_t>> TLSDataTy;
 list<shared_ptr<TLSDataTy>> GlobalEPPDataList;
 
 mutex tlsMutex;
 
 class EPP(data) {
-    // thread::id tid;
     shared_ptr<TLSDataTy> Ptr;
 
   public:
@@ -29,12 +30,12 @@ class EPP(data) {
     }
 
     EPP(data)() {
-        // tid = this_thread::get_id();
-        // cout << "ctor " << tid << endl;
-
         lock_guard<mutex> lock(tlsMutex);
         Ptr = make_shared<TLSDataTy>();
         GlobalEPPDataList.push_back(Ptr);
+        // Allocate an unordered_map for each function even though we know it
+        // may not
+        // be used. This is to make the lookup faster at runtime.
         Ptr->resize(EPP(numberOfFunctions));
     }
 };
@@ -69,13 +70,24 @@ void EPP(save)(char *path) {
         }
     }
 
-    // Save the data to a file
+    // Save the data to a file. Make the dump deterministic by
+    // sorting the function ids, and then sorting the paths by
+    // their freq/id. The path printer already sorts by freq.
 
     for (uint32_t I = 0; I < Accumulate.size(); I++) {
-        if(Accumulate[I].size() > 0) {
+        if (Accumulate[I].size() > 0) {
             fprintf(fp, "%u %lu\n", I, Accumulate[I].size());
-            for (auto &KV : Accumulate[I]) {
-                fprintf(fp, "%016" PRIx64 " %" PRIu64 "\n", KV.first, KV.second);
+            vector<pair<uint64_t, uint64_t>> Values(Accumulate[I].begin(),
+                                                    Accumulate[I].end());
+            sort(Values.begin(), Values.end(),
+                 [](const pair<uint64_t, uint64_t> &P1,
+                    const pair<uint64_t, uint64_t> &P2) {
+                     return (P1.second > P2.second) ||
+                            (P1.second == P2.second && P1.first > P2.first);
+                 });
+            for (auto &KV : Values) {
+                fprintf(fp, "%016" PRIx64 " %" PRIu64 "\n", KV.first,
+                        KV.second);
             }
         }
     }

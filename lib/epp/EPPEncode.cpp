@@ -41,7 +41,6 @@ bool isFunctionExiting(BasicBlock *BB) {
 
     return false;
 }
-
 }
 
 bool EPPEncode::runOnFunction(Function &F) {
