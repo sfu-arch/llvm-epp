@@ -114,21 +114,6 @@ bool EPPPathPrinter::runOnModule(Module &M) {
 
     InFile.close();
 
-    // for (auto &F : M) {
-    //     if (!F.isDeclaration()) {
-    //         errs() << "- name: " << F.getName() << "\n";
-    //         //EPPEncode &E = getAnalysis<EPPEncode>(F);
-    //         auto Res     = D.getPaths(F);
-    //         errs() << "  num_exec_paths: " << Res.size() << "\n";
-    //         for (auto &P : Res) {
-    //             SmallString<16> PathId;
-    //             P.Id.toStringSigned(PathId, 16);
-    //             errs() << "  - path: " << PathId << "\n";
-    //             printPathSrc(P.Blocks, errs(), StringRef("      "));
-    //         }
-    //     }
-    // }
-
     return false;
 }
 

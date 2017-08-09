@@ -72,9 +72,11 @@ void EPP(save)(char *path) {
     // Save the data to a file
 
     for (uint32_t I = 0; I < Accumulate.size(); I++) {
-        fprintf(fp, "%u %lu\n", I, Accumulate[I].size());
-        for (auto &KV : Accumulate[I]) {
-            fprintf(fp, "%016" PRIx64 " %" PRIu64 "\n", KV.first, KV.second);
+        if(Accumulate[I].size() > 0) {
+            fprintf(fp, "%u %lu\n", I, Accumulate[I].size());
+            for (auto &KV : Accumulate[I]) {
+                fprintf(fp, "%016" PRIx64 " %" PRIu64 "\n", KV.first, KV.second);
+            }
         }
     }
 

@@ -155,14 +155,18 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
     // not return. So modify the logPos to point to the instruction
     // before that one.
 
-    if (isa<UnreachableInst>(logPos)) {
-        auto Pos  = BB->getFirstInsertionPt();
-        auto Next = next(Pos);
-        while (&*Next != BB->getTerminator()) {
-            Pos++, Next++;
-        }
-        logPos = &*Pos;
-    }
+    // FIXME: Should we log paths just before something like exit() or 
+    // __clang_call_terminate() is called? This logic needs to be more 
+    // robust.
+    
+    // if (isa<UnreachableInst>(logPos)) {
+    //     auto Pos  = BB->getFirstInsertionPt();
+    //     auto Next = next(Pos);
+    //     while (&*Next != BB->getTerminator()) {
+    //         Pos++, Next++;
+    //     }
+    //     logPos = &*Pos;
+    // }
 
     auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
     vector<Value *> Params = {LI, FIdArg};
@@ -283,6 +287,8 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     for (auto &EB : ExitBlocks) {
         insertLogPath(EB, FuncId, Ctr, Zap);
     }
+
+    //saveModule(*M, "test.bc");
 }
 
 char EPPProfile::ID = 0;
