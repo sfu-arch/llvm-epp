@@ -60,7 +60,7 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &E) {
         Sequence.push_back(Position);
         if (isExitBlock(Position))
             break;
-        APInt Wt(128, 0, true);
+        APInt Wt(64, 0, true);
         EdgePtr Select = nullptr;
         DEBUG(errs() << Position->getName() << " (\n");
         for (auto &Edge : AG.succs(Position)) {

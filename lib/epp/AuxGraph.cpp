@@ -187,7 +187,7 @@ SmallVector<pair<EdgePtr, APInt>, 16> AuxGraph::getWeights() {
     SmallVector<pair<EdgePtr, APInt>, 16> Result;
     copy_if(Weights.begin(), Weights.end(), back_inserter(Result),
             [](const pair<EdgePtr, APInt> &V) {
-                return V.first->real && V.second.ne(APInt(128, 0, true));
+                return V.first->real && V.second.ne(APInt(64, 0, true));
             });
     return Result;
 }

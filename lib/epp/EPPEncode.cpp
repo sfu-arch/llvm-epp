@@ -183,7 +183,7 @@ void EPPEncode::encode(Function &F) {
     AG.segment(SegmentEdges);
 
     for (auto &B : AG.nodes()) {
-        APInt pathCount(128, 0, true);
+        APInt pathCount(64, 0, true);
 
         if (isFunctionExiting(B))
             pathCount = 1;
@@ -192,7 +192,7 @@ void EPPEncode::encode(Function &F) {
             AG[SE]  = pathCount;
             auto *S = SE->tgt;
             if (numPaths.count(S) == 0)
-                numPaths.insert(make_pair(S, APInt(128, 0, true)));
+                numPaths.insert(make_pair(S, APInt(64, 0, true)));
 
             // This is the only place we need to check for overflow.
             bool Ov   = false;

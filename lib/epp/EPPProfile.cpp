@@ -64,7 +64,7 @@ SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
 }
 
 void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
-    if (Increment.ne(APInt(128, 0, true))) {
+    if (Increment.ne(APInt(64, 0, true))) {
         //(errs() << "Inserting Increment " << Increment << " "
         //<< addPos->getParent()->getName() << "\n");
         auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
@@ -81,18 +81,6 @@ void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
 
 BasicBlock *interpose(BasicBlock *BB, BasicBlock *Succ,
                       DominatorTree *DT = nullptr, LoopInfo *LI = nullptr) {
-
-    // errs() << "Splitting: " << BB->getName() << "->" << Succ->getName() <<
-    // "\n";
-    // auto *N = SplitEdge2(BB, Succ, DT, LI);
-    // if(find(succ_begin(BB), succ_end(BB), N) == succ_end(BB)) {
-    //    // FIXME: patch the edges in AuxGraph
-    //    // OR FIXME: write own interpose for only this part and copy in
-    //    // the code for split edge for the remaining cases.
-    //    errs() << "SplitPatch\n";
-    //    return Succ;
-    // }
-    // return N;
 
     unsigned SuccNum = GetSuccessorNumber(BB, Succ);
 
@@ -129,8 +117,7 @@ BasicBlock *interpose(BasicBlock *BB, BasicBlock *Succ,
     }
 
     // Otherwise, if BB has a single successor, successorsplit it at the bottom
-    // of the
-    // block.
+    // of the block.
     assert(BB->getTerminator()->getNumSuccessors() == 1 &&
            "Should have a single succ!");
     return SplitBlock(BB, BB->getTerminator(), DT, LI);
@@ -222,8 +209,8 @@ bool EPPProfile::runOnModule(Module &Mod) {
     for (auto &F : Mod) {
         if (F.isDeclaration())
             continue;
-        errs() << "- name: " << F.getName() << "\n";
         auto &Enc = getAnalysis<EPPEncode>(F);
+        errs() << "- name: " << F.getName() << "\n";
         errs() << "  num_paths: " << Enc.numPaths[&F.getEntryBlock()] << "\n";
         instrument(F, Enc);
     }

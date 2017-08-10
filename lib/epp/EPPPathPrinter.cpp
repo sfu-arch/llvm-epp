@@ -82,7 +82,7 @@ bool EPPPathPrinter::runOnModule(Module &M) {
                 string PathIdStr;
                 uint64_t PathExecFreq;
                 SS >> PathIdStr >> PathExecFreq;
-                APInt PathId(128, StringRef(PathIdStr), 16);
+                APInt PathId(64, StringRef(PathIdStr), 16);
 
                 // Add a path data struct for each path we find in the
                 // profile. For each struct only initialize the Id and
