@@ -28,8 +28,6 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-STATISTIC(NumPaths, "Number of paths in the function from entry");
-STATISTIC(NumSegmentedEdges, "Number of segmented edges in the function");
 
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
@@ -183,7 +181,6 @@ void EPPEncode::encode(Function &F) {
     }
 
     AG.segment(SegmentEdges);
-    NumSegmentedEdges += SegmentEdges.size();
 
     for (auto &B : AG.nodes()) {
         APInt pathCount(64, 0, true);
@@ -214,7 +211,6 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-    NumPaths += numPaths[Entry].getLimitedValue();
 
     // error_code EC;
     // raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);

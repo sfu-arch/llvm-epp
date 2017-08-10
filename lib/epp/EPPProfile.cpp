@@ -29,8 +29,6 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-STATISTIC(NumInstInc, "Number of increments to the path counter");
-STATISTIC(NumInstLog, "Number of calls to the log function");
 
 extern cl::opt<string> profileOutputFilename;
 
@@ -46,6 +44,10 @@ bool EPPProfile::doInitialization(Module &M) {
 bool EPPProfile::doFinalization(Module &M) { return false; }
 
 namespace {
+
+uint64_t NumInstInc = 0; 
+uint64_t NumInstLog = 0;
+
 void saveModule(Module &m, StringRef filename) {
     error_code EC;
     raw_fd_ostream out(filename.data(), EC, sys::fs::F_None);
@@ -169,6 +171,7 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
 
     ++NumInstLog;
 }
+
 }
 
 void EPPProfile::addCtorsAndDtors(Module &Mod) {
@@ -222,9 +225,11 @@ bool EPPProfile::runOnModule(Module &Mod) {
         // Check if integer overflow occurred during path enumeration,
         // if it did then the entry block numpaths is set to zero.
         if (NumPaths.ne(APInt(64, 0, true))) {
+            instrument(F, Enc);
             errs() << "- name: " << F.getName() << "\n";
             errs() << "  num_paths: " << NumPaths << "\n";
-            instrument(F, Enc);
+            errs() << "  num_inst_inc: " << NumInstInc << "\n";
+            errs() << "  num_inst_log: " << NumInstLog << "\n";
         }
     }
 
@@ -234,6 +239,8 @@ bool EPPProfile::runOnModule(Module &Mod) {
 }
 
 void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
+    NumInstInc = 0, NumInstLog = 0;
+
     Module *M = F.getParent();
     auto &Ctx = M->getContext();
 
