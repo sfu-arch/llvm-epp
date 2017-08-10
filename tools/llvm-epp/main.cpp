@@ -40,6 +40,7 @@
 
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/Analysis/Passes.h"
+#include "llvm/IR/DebugInfo.h"
 
 #include <memory>
 #include <string>
@@ -56,8 +57,8 @@ using namespace epp;
 cl::OptionCategory LLVMEppOptionCategory("EPP Options",
                                          "Additional options for the EPP tool");
 
-cl::opt<string> inPath(cl::Positional, cl::desc("<Module to analyze>"),
-                       cl::value_desc("bitcode filename"), cl::Required,
+cl::opt<string> inPath(cl::Positional, cl::desc("Module to analyze"),
+                       cl::value_desc("filename"), cl::Required,
                        cl::cat(LLVMEppOptionCategory));
 
 cl::opt<string>
@@ -69,6 +70,9 @@ cl::opt<string>
 cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
                         cl::value_desc("filename"),
                         cl::cat(LLVMEppOptionCategory));
+
+cl::opt<bool> stripDebug("s", cl::desc("Remove debug information from the instrumented bitcode"),
+                    cl::value_desc("toggle"), cl::Hidden, cl::init(true), cl::cat(LLVMEppOptionCategory));
 
 // cl::opt<bool> wideCounter(
 //     "w",
@@ -111,6 +115,15 @@ void instrumentModule(Module &module) {
             s.replace(i + 1, newExt.length(), newExt);
         }
     };
+
+    // This removes debug information from the module which has
+    // been instrumented by EPPProfile. Rarely debug information
+    // which got moved around caused a crash in clang when being 
+    // compiled to an executable (observed in 447.dealII).
+    if(stripDebug) {
+        StripDebugInfo(module);
+    }
+
     replaceExt(inPath, "epp.bc");
     saveModule(module, inPath);
 }

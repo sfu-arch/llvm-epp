@@ -15,11 +15,12 @@
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
-
 #include "llvm/Support/FileSystem.h"
+#include "llvm/ADT/Statistic.h"
 
 #include "EPPEncode.h"
 #include "EPPProfile.h"
+
 #include <cassert>
 #include <tuple>
 #include <unordered_map>
@@ -27,6 +28,9 @@
 using namespace llvm;
 using namespace epp;
 using namespace std;
+
+STATISTIC(NumInstInc, "Number of increments to the path counter");
+STATISTIC(NumInstLog, "Number of calls to the log function");
 
 extern cl::opt<string> profileOutputFilename;
 
@@ -63,19 +67,21 @@ SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
     return R;
 }
 
-void insertInc(Instruction *addPos, APInt Increment, AllocaInst *Ctr) {
-    if (Increment.ne(APInt(64, 0, true))) {
+void insertInc(Instruction *addPos, APInt Inc, AllocaInst *Ctr) {
+    if (Inc.ne(APInt(64, 0, true))) {
         //(errs() << "Inserting Increment " << Increment << " "
         //<< addPos->getParent()->getName() << "\n");
         auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
         Constant *CI = nullptr;
-        auto I64     = APInt(64, Increment.getLimitedValue(), true);
-        CI = ConstantInt::getIntegerValue(Ctr->getAllocatedType(), I64);
+        //auto I64     = APInt(64, Increment.getLimitedValue(), true);
+        CI = ConstantInt::getIntegerValue(Ctr->getAllocatedType(), Inc);
 
         auto *BI = BinaryOperator::CreateAdd(LI, CI);
         BI->insertAfter(LI);
         (new StoreInst(BI, Ctr))->insertAfter(BI);
+
+        ++NumInstInc;
     }
 }
 
@@ -123,8 +129,8 @@ BasicBlock *interpose(BasicBlock *BB, BasicBlock *Succ,
     return SplitBlock(BB, BB->getTerminator(), DT, LI);
 }
 
-void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
-                   Constant *Zap) {
+void insertLogPath(BasicBlock *BB, uint64_t FuncId, 
+                    AllocaInst *Ctr, Constant *Zap) {
 
     // errs() << "Inserting Log: " << BB->getName() << "\n";
 
@@ -160,7 +166,10 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
     auto *CI               = CallInst::Create(logFun2, Params, "");
     CI->insertAfter(LI);
     (new StoreInst(Zap, Ctr))->insertAfter(CI);
+
+    ++NumInstLog;
 }
+
 }
 
 void EPPProfile::addCtorsAndDtors(Module &Mod) {
@@ -210,9 +219,14 @@ bool EPPProfile::runOnModule(Module &Mod) {
         if (F.isDeclaration())
             continue;
         auto &Enc = getAnalysis<EPPEncode>(F);
-        errs() << "- name: " << F.getName() << "\n";
-        errs() << "  num_paths: " << Enc.numPaths[&F.getEntryBlock()] << "\n";
-        instrument(F, Enc);
+        auto NumPaths = Enc.numPaths[&F.getEntryBlock()];
+        // Check if integer overflow occurred during path enumeration,
+        // if it did then the entry block numpaths is set to zero.
+        if(NumPaths.ne(APInt(64, 0, true))) {
+            errs() << "- name: " << F.getName() << "\n";
+            errs() << "  num_paths: " << NumPaths << "\n";
+            instrument(F, Enc);
+        }
     }
 
     addCtorsAndDtors(Mod);

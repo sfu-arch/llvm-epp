@@ -12,7 +12,7 @@
 
 using namespace llvm;
 
-namespace aux {
+namespace epp {
 
 struct Edge {
     BasicBlock *src, *tgt;

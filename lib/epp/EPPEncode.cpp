@@ -13,22 +13,23 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/ADT/Statistic.h"
 
 #include "EPPEncode.h"
-
 #include "AuxGraph.h"
+
 #include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <set>
-//#include <stack>
-#include <unordered_set>
 #include <vector>
 
-using namespace aux;
 using namespace llvm;
 using namespace epp;
 using namespace std;
+
+STATISTIC(NumPaths, "Number of paths in the function from entry");
+STATISTIC(NumSegmentedEdges, "Number of segmented edges in the function");
 
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
@@ -166,7 +167,8 @@ void EPPEncode::encode(Function &F) {
 
     AG.init(F);
 
-    auto BackEdges = getBackEdges(&F.getEntryBlock());
+    auto *Entry = &F.getEntryBlock();
+    auto BackEdges = getBackEdges(Entry);
 
     SetVector<std::pair<const BasicBlock *, const BasicBlock *>> SegmentEdges;
 
@@ -181,6 +183,7 @@ void EPPEncode::encode(Function &F) {
     }
 
     AG.segment(SegmentEdges);
+    NumSegmentedEdges += SegmentEdges.size();
 
     for (auto &B : AG.nodes()) {
         APInt pathCount(64, 0, true);
@@ -195,14 +198,23 @@ void EPPEncode::encode(Function &F) {
                 numPaths.insert(make_pair(S, APInt(64, 0, true)));
 
             // This is the only place we need to check for overflow.
+            // If there is an overflow, indicate this by saving 0 as the
+            // number of paths from the entry block. This is impossible for 
+            // a regular CFG where the numpaths from entry would atleast be 1
+            // if the entry block is also the exit block.
             bool Ov   = false;
             pathCount = pathCount.sadd_ov(numPaths[S], Ov);
             if (Ov) {
-                report_fatal_error("Integer Overflow");
+                numPaths.clear();
+                numPaths.insert(make_pair(Entry, APInt(64, 0, true)));
+                DEBUG(errs() << "Integer Overflow in function " << F.getName());
+                return;
             }
         }
         numPaths.insert({B, pathCount});
     }
+
+    NumPaths += numPaths[Entry].getLimitedValue();
 
     // error_code EC;
     // raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);

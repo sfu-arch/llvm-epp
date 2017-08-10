@@ -8,16 +8,15 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
-#include <fstream>
-
-#include <sstream>
 
 #include "EPPDecode.h"
+
+#include <fstream>
+#include <sstream>
 
 using namespace llvm;
 using namespace epp;
 using namespace std;
-using namespace aux;
 
 namespace {
 
@@ -26,6 +25,7 @@ inline bool isExitBlock(BasicBlock *BB) {
         return true;
     return false;
 }
+
 }
 
 bool EPPDecode::doInitialization(Module &M) {

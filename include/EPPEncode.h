@@ -27,7 +27,7 @@ struct EPPEncode : public llvm::FunctionPass {
     llvm::LoopInfo *LI;
     llvm::DenseMap<llvm::BasicBlock *, llvm::APInt> numPaths;
     // altcfg ACFG;
-    aux::AuxGraph AG;
+    AuxGraph AG;
 
     EPPEncode() : llvm::FunctionPass(ID), LI(nullptr) {}
 

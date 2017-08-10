@@ -10,7 +10,7 @@
 #include <vector>
 
 using namespace std;
-using namespace aux;
+using namespace epp;
 
 namespace {
 
