@@ -1,6 +1,7 @@
 #define DEBUG_TYPE "epp_profile"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/Bitcode/ReaderWriter.h"
 #include "llvm/IR/BasicBlock.h"
@@ -12,11 +13,10 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/FileSystem.h"
 #include "llvm/Support/GraphWriter.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/ModuleUtils.h"
-#include "llvm/Support/FileSystem.h"
-#include "llvm/ADT/Statistic.h"
 
 #include "EPPEncode.h"
 #include "EPPProfile.h"
@@ -74,7 +74,7 @@ void insertInc(Instruction *addPos, APInt Inc, AllocaInst *Ctr) {
         auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
         Constant *CI = nullptr;
-        //auto I64     = APInt(64, Increment.getLimitedValue(), true);
+        // auto I64     = APInt(64, Increment.getLimitedValue(), true);
         CI = ConstantInt::getIntegerValue(Ctr->getAllocatedType(), Inc);
 
         auto *BI = BinaryOperator::CreateAdd(LI, CI);
@@ -129,8 +129,8 @@ BasicBlock *interpose(BasicBlock *BB, BasicBlock *Succ,
     return SplitBlock(BB, BB->getTerminator(), DT, LI);
 }
 
-void insertLogPath(BasicBlock *BB, uint64_t FuncId, 
-                    AllocaInst *Ctr, Constant *Zap) {
+void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
+                   Constant *Zap) {
 
     // errs() << "Inserting Log: " << BB->getName() << "\n";
 
@@ -169,7 +169,6 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId,
 
     ++NumInstLog;
 }
-
 }
 
 void EPPProfile::addCtorsAndDtors(Module &Mod) {
@@ -218,11 +217,11 @@ bool EPPProfile::runOnModule(Module &Mod) {
     for (auto &F : Mod) {
         if (F.isDeclaration())
             continue;
-        auto &Enc = getAnalysis<EPPEncode>(F);
+        auto &Enc     = getAnalysis<EPPEncode>(F);
         auto NumPaths = Enc.numPaths[&F.getEntryBlock()];
         // Check if integer overflow occurred during path enumeration,
         // if it did then the entry block numpaths is set to zero.
-        if(NumPaths.ne(APInt(64, 0, true))) {
+        if (NumPaths.ne(APInt(64, 0, true))) {
             errs() << "- name: " << F.getName() << "\n";
             errs() << "  num_paths: " << NumPaths << "\n";
             instrument(F, Enc);

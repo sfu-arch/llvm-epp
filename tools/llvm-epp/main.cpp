@@ -71,8 +71,10 @@ cl::opt<string> profile("p", cl::desc("Path to path profiling results"),
                         cl::value_desc("filename"),
                         cl::cat(LLVMEppOptionCategory));
 
-cl::opt<bool> stripDebug("s", cl::desc("Remove debug information from the instrumented bitcode"),
-                    cl::value_desc("toggle"), cl::Hidden, cl::init(true), cl::cat(LLVMEppOptionCategory));
+cl::opt<bool> stripDebug(
+    "s", cl::desc("Remove debug information from the instrumented bitcode"),
+    cl::value_desc("toggle"), cl::Hidden, cl::init(true),
+    cl::cat(LLVMEppOptionCategory));
 
 // cl::opt<bool> wideCounter(
 //     "w",
@@ -118,9 +120,9 @@ void instrumentModule(Module &module) {
 
     // This removes debug information from the module which has
     // been instrumented by EPPProfile. Rarely debug information
-    // which got moved around caused a crash in clang when being 
+    // which got moved around caused a crash in clang when being
     // compiled to an executable (observed in 447.dealII).
-    if(stripDebug) {
+    if (stripDebug) {
         StripDebugInfo(module);
     }
 

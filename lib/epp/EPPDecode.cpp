@@ -25,7 +25,6 @@ inline bool isExitBlock(BasicBlock *BB) {
         return true;
     return false;
 }
-
 }
 
 bool EPPDecode::doInitialization(Module &M) {

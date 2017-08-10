@@ -3,6 +3,7 @@
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/ADT/SCCIterator.h"
 #include "llvm/ADT/SetVector.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CFG.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
@@ -13,10 +14,9 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/ADT/Statistic.h"
 
-#include "EPPEncode.h"
 #include "AuxGraph.h"
+#include "EPPEncode.h"
 
 #include <algorithm>
 #include <cassert>
@@ -167,7 +167,7 @@ void EPPEncode::encode(Function &F) {
 
     AG.init(F);
 
-    auto *Entry = &F.getEntryBlock();
+    auto *Entry    = &F.getEntryBlock();
     auto BackEdges = getBackEdges(Entry);
 
     SetVector<std::pair<const BasicBlock *, const BasicBlock *>> SegmentEdges;
@@ -199,7 +199,7 @@ void EPPEncode::encode(Function &F) {
 
             // This is the only place we need to check for overflow.
             // If there is an overflow, indicate this by saving 0 as the
-            // number of paths from the entry block. This is impossible for 
+            // number of paths from the entry block. This is impossible for
             // a regular CFG where the numpaths from entry would atleast be 1
             // if the entry block is also the exit block.
             bool Ov   = false;
