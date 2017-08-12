@@ -14,6 +14,8 @@
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/Analysis/CFGPrinter.h"
 
 #include "AuxGraph.h"
 #include "EPPEncode.h"
@@ -34,12 +36,23 @@ bool EPPEncode::doFinalization(Module &m) { return false; }
 
 namespace {
 
+void printCFG(Function &F) {
+    legacy::FunctionPassManager FPM(F.getParent());
+    FPM.add(llvm::createCFGPrinterPass());
+    FPM.doInitialization();
+    FPM.run(F);
+    FPM.doFinalization();
+}
+
 bool isFunctionExiting(BasicBlock *BB) {
-    if (BB->getTerminator()->getNumSuccessors() == 0)
+    if (BB->getTerminator()->getNumSuccessors() == 0) {
+        //errs() << BB->getName() << " is an exit block\n";
         return true;
+    }
 
     return false;
 }
+
 }
 
 bool EPPEncode::runOnFunction(Function &F) {
@@ -163,6 +176,9 @@ getBackEdges(BasicBlock *StartBB) {
 void EPPEncode::encode(Function &F) {
     DEBUG(errs() << "Called Encode on " << F.getName() << "\n");
 
+    // DEBUG
+    //printCFG(F);
+
     AG.init(F);
 
     auto *Entry    = &F.getEntryBlock();
@@ -179,6 +195,11 @@ void EPPEncode::encode(Function &F) {
             }
         }
     }
+
+    error_code EC2;
+    raw_fd_ostream out2("auxgraph-b4seg.dot", EC2, sys::fs::F_Text);
+    AG.dot(out2);
+    out2.close();
 
     AG.segment(SegmentEdges);
 
@@ -212,10 +233,10 @@ void EPPEncode::encode(Function &F) {
     }
 
 
-    // error_code EC;
-    // raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
-    // AG.dot(out);
-    // out.close();
+    error_code EC;
+    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
+    AG.dot(out);
+    out.close();
 }
 
 char EPPEncode::ID = 0;

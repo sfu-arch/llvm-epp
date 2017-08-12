@@ -69,10 +69,11 @@ SmallVector<BasicBlock *, 1> getFunctionExitBlocks(Function &F) {
     return R;
 }
 
-void insertInc(Instruction *addPos, APInt Inc, AllocaInst *Ctr) {
+void insertInc(BasicBlock *Block, APInt Inc, AllocaInst *Ctr) {
     if (Inc.ne(APInt(64, 0, true))) {
         //(errs() << "Inserting Increment " << Increment << " "
         //<< addPos->getParent()->getName() << "\n");
+        auto *addPos = &*Block->getFirstInsertionPt();
         auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
         Constant *CI = nullptr;
@@ -143,25 +144,11 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
     auto *FIdArg = ConstantInt::getIntegerValue(CtrTy, APInt(64, FuncId, true));
     Function *logFun2 = cast<Function>(
         M->getOrInsertFunction("__epp_logPath", voidTy, CtrTy, CtrTy, nullptr));
-    Instruction *logPos = BB->getTerminator();
 
-    // If the terminator is a unreachable inst, then the instruction
-    // prior to it is *most* probably a call instruction which does
-    // not return. So modify the logPos to point to the instruction
-    // before that one.
-
-    // FIXME: Should we log paths just before something like exit() or
-    // __clang_call_terminate() is called? This logic needs to be more
-    // robust.
-
-    // if (isa<UnreachableInst>(logPos)) {
-    //     auto Pos  = BB->getFirstInsertionPt();
-    //     auto Next = next(Pos);
-    //     while (&*Next != BB->getTerminator()) {
-    //         Pos++, Next++;
-    //     }
-    //     logPos = &*Pos;
-    // }
+    // We insert the logging function as the first thing in the basic block
+    // as we know for sure that there is no other instrumentation present in
+    // this basic block. 
+    Instruction *logPos = &*BB->getFirstInsertionPt();
 
     auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
     vector<Value *> Params = {LI, FIdArg};
@@ -220,6 +207,7 @@ bool EPPProfile::runOnModule(Module &Mod) {
     for (auto &F : Mod) {
         if (F.isDeclaration())
             continue;
+
         auto &Enc     = getAnalysis<EPPEncode>(F);
         auto NumPaths = Enc.numPaths[&F.getEntryBlock()];
         // Check if integer overflow occurred during path enumeration,
@@ -238,6 +226,26 @@ bool EPPProfile::runOnModule(Module &Mod) {
     return true;
 }
 
+
+/// This routine inserts two types of instrumentation. 
+/// 1. Incrementing a counter along a set of edges
+/// 2. Logging the value of the counter at certain blocks.
+/// For 1) The counter is incremented by splitting an existing
+/// edge in the CFG. This implies a new basic block is inserted
+/// between two basic blocks and the instrumentation is inserted 
+/// into the new block.
+/// For 2) The counter value is saved by the runtim at certain 
+/// basic blocks. This is performed by the insertion of function
+/// call to the logging runtime function. 
+/// Goals: 
+/// 1) Splitting edges should insert *new* blocks inside them so 
+/// that the Graph structure which maintains the edge weights does 
+/// not need to be updated at runtime.
+/// 2) Instrumentation is always inserted at the BB's first insertion pt.
+/// 3) There is an ordering on the the instrumentation insertion.
+///   - splitting edges
+///   - leaf log function calls
+///   - counter allocation 
 void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     NumInstInc = 0, NumInstLog = 0;
 
@@ -246,16 +254,13 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
     uint64_t FuncId = FunctionIds[&F];
 
-    // 1. Lookup the Function to Function ID mapping here
-    // 2. Create a constant int for the id
-    // 3. Pass the id in the logpath2 function call
-
+    // Allocate a counter but dont insert it just yet. We want the 
+    // counter to be the last thing to insert in the function so that 
+    // it always dominates the log function call -- eg. when there is 
+    // only 1 basic block in the function.
     Type *CtrTy   = Type::getInt64Ty(Ctx);
     Constant *Zap = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
-    auto *Ctr     = new AllocaInst(CtrTy, nullptr, "epp.ctr",
-                               &*F.getEntryBlock().getFirstInsertionPt());
-    auto *SI = new StoreInst(Zap, Ctr);
-    SI->insertAfter(Ctr);
+    auto *Ctr     = new AllocaInst(CtrTy, nullptr, "epp.ctr");
 
     auto ExitBlocks = getFunctionExitBlocks(F);
 
@@ -268,7 +273,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         auto &Ptr       = W.first;
         BasicBlock *Src = Ptr->src, *Tgt = Ptr->tgt;
         BasicBlock *N = interpose(Src, Tgt);
-        insertInc(&*N->getFirstInsertionPt(), W.second, Ctr);
+        insertInc(N, W.second, Ctr);
     }
 
     // Get the weights for the segmented edges
@@ -277,16 +282,18 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     for (auto &S : SegMap) {
         auto &Ptr       = S.first;
         BasicBlock *Src = Ptr->src, *Tgt = Ptr->tgt;
-        BasicBlock *N = interpose(Src, Tgt);
 
         auto &AExit  = S.second.first;
         APInt Pre    = Enc.AG.getEdgeWeight(AExit);
         auto &EntryB = S.second.second;
         APInt Post   = Enc.AG.getEdgeWeight(EntryB);
 
-        insertInc(&*N->getFirstInsertionPt(), Pre, Ctr);
+        BasicBlock *N = interpose(Src, Tgt);
+
+        // Since we always add instrumentation 
+        insertInc(N, Post, Ctr);
         insertLogPath(N, FuncId, Ctr, Zap);
-        insertInc(&*N->getTerminator(), Post, Ctr);
+        insertInc(N, Pre, Ctr);
     }
 
     // Add the logpath function for all function exiting
@@ -294,6 +301,12 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     for (auto &EB : ExitBlocks) {
         insertLogPath(EB, FuncId, Ctr, Zap);
     }
+
+    // Add the counter as the first instruction in the entry 
+    // block of the function. Set the counter to zero.
+    Ctr->insertBefore(&*F.getEntryBlock().getFirstInsertionPt());
+    auto *SI = new StoreInst(Zap, Ctr);
+    SI->insertAfter(Ctr);
 
     // saveModule(*M, "test.bc");
 }

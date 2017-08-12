@@ -152,6 +152,7 @@ void AuxGraph::segment(
     /// Move the internal EdgePtr from the EdgeList to the SegmentList
     for (auto &L : List) {
         auto *Src = L.first, *Tgt = L.second;
+
         assert(EdgeList.count(Src) &&
                "Source basicblock not found in edge list.");
         auto &Edges = EdgeList[Src];
@@ -218,7 +219,8 @@ void AuxGraph::dot(raw_ostream &os = errs()) {
                << " [style=solid,";
             if (!L->real)
                 os << "color=\"red\",";
-            os << " label=\"" << Weights[L] << "\"];\n";
+            //os << " label=\"" << Weights[L] << "\"];\n";
+            os << " label=\"" << "\"];\n";
         }
     }
     os << "}\n";
