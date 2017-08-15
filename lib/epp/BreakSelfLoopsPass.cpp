@@ -3,16 +3,29 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/Analysis/CFG.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 using namespace epp;
 
 namespace {
 
-void BreakSelfLoops(Function &F) {
+bool BreakSelfLoops(Function &F) {
+    bool Changed = false;
+
+    SmallVector<BasicBlock*, 4> SelfLoops;
     for (auto &BB : F) {
-         
+        for(auto S = succ_begin(&BB), E = succ_end(&BB); S != E; S++) {
+            if(*S == &BB) 
+                SelfLoops.push_back(&BB);
+        }            
     }
+
+    for(auto BB : SelfLoops) {
+        Changed |= (bool)SplitEdge(BB, BB);
+    }
+
+    return Changed;
 }
 
 }
@@ -22,13 +35,14 @@ void BreakSelfLoops(Function &F) {
 /// ie. it is an infinite loop. We find this to occur in 401.bzip2,
 /// handle_compress. 
 bool BreakSelfLoopsPass::runOnModule(Module &M) {
+    bool Changed = false;
     for (auto &F : M) {
         if (F.isDeclaration())
             continue;
-        BreakSelfLoops(F);
+        Changed |= BreakSelfLoops(F);
     }
 
-    return true;
+    return Changed;
 }
 
 char BreakSelfLoopsPass::ID = 0;

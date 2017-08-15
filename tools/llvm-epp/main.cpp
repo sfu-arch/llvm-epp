@@ -48,6 +48,7 @@
 #include "EPPPathPrinter.h"
 #include "EPPProfile.h"
 #include "SplitLandingPadPredsPass.h"
+#include "BreakSelfLoopsPass.h"
 
 using namespace std;
 using namespace llvm;
@@ -104,6 +105,7 @@ void instrumentModule(Module &module) {
     pm.add(createLoopSimplifyPass());
     // pm.add(llvm::createBasicAAWrapperPass());
     // pm.add(createTypeBasedAAWrapperPass());
+    pm.add(new epp::BreakSelfLoopsPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::SplitLandingPadPredsPass());
     pm.add(new LoopInfoWrapperPass());
@@ -136,6 +138,7 @@ void interpretResults(Module &module, std::string filename) {
     pm.add(createLoopSimplifyPass());
     // pm.add(createBasicAAWrapperPass());
     // pm.add(createTypeBasedAAWrapperPass());
+    pm.add(new epp::BreakSelfLoopsPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::SplitLandingPadPredsPass());
     pm.add(new LoopInfoWrapperPass());
