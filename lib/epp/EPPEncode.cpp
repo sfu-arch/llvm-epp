@@ -44,14 +44,14 @@ void printCFG(Function &F) {
     FPM.doFinalization();
 }
 
-bool isFunctionExiting(BasicBlock *BB) {
-    if (BB->getTerminator()->getNumSuccessors() == 0) {
-        //errs() << BB->getName() << " is an exit block\n";
-        return true;
-    }
-
-    return false;
-}
+// bool isFunctionExiting(BasicBlock *BB) {
+//     if (BB->getTerminator()->getNumSuccessors() == 0) {
+//         //errs() << BB->getName() << " is an exit block\n";
+//         return true;
+//     }
+// 
+//     return false;
+// }
 
 }
 
@@ -196,47 +196,50 @@ void EPPEncode::encode(Function &F) {
         }
     }
 
-    error_code EC2;
-    raw_fd_ostream out2("auxgraph-b4seg.dot", EC2, sys::fs::F_Text);
-    AG.dot(out2);
-    out2.close();
+    // error_code EC2;
+    // raw_fd_ostream out2("auxgraph-b4seg.dot", EC2, sys::fs::F_Text);
+    // AG.dot(out2);
+    // out2.close();
 
     AG.segment(SegmentEdges);
 
     for (auto &B : AG.nodes()) {
         APInt pathCount(64, 0, true);
 
-        if (isFunctionExiting(B))
+        auto Succs = AG.succs(B);
+        if (Succs.empty()) {
             pathCount = 1;
+        } else {
+            for (auto & SE : Succs) {
+                AG[SE]  = pathCount;
+                auto *S = SE->tgt;
+                if (numPaths.count(S) == 0)
+                    numPaths.insert(make_pair(S, APInt(64, 0, true)));
 
-        for (auto &SE : AG.succs(B)) {
-            AG[SE]  = pathCount;
-            auto *S = SE->tgt;
-            if (numPaths.count(S) == 0)
-                numPaths.insert(make_pair(S, APInt(64, 0, true)));
-
-            // This is the only place we need to check for overflow.
-            // If there is an overflow, indicate this by saving 0 as the
-            // number of paths from the entry block. This is impossible for
-            // a regular CFG where the numpaths from entry would atleast be 1
-            // if the entry block is also the exit block.
-            bool Ov   = false;
-            pathCount = pathCount.sadd_ov(numPaths[S], Ov);
-            if (Ov) {
-                numPaths.clear();
-                numPaths.insert(make_pair(Entry, APInt(64, 0, true)));
-                DEBUG(errs() << "Integer Overflow in function " << F.getName());
-                return;
+                // This is the only place we need to check for overflow.
+                // If there is an overflow, indicate this by saving 0 as the
+                // number of paths from the entry block. This is impossible for
+                // a regular CFG where the numpaths from entry would atleast be 1
+                // if the entry block is also the exit block.
+                bool Ov   = false;
+                pathCount = pathCount.sadd_ov(numPaths[S], Ov);
+                if (Ov) {
+                    numPaths.clear();
+                    numPaths.insert(make_pair(Entry, APInt(64, 0, true)));
+                    DEBUG(errs() << "Integer Overflow in function " << F.getName());
+                    return;
+                }
             }
         }
+
         numPaths.insert({B, pathCount});
     }
 
 
-    error_code EC;
-    raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
-    AG.dot(out);
-    out.close();
+    // error_code EC;
+    // raw_fd_ostream out("auxgraph.dot", EC, sys::fs::F_Text);
+    // AG.dot(out);
+    // out.close();
 }
 
 char EPPEncode::ID = 0;

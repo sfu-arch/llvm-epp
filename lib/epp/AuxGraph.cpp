@@ -68,7 +68,8 @@ SmallVector<BasicBlock *, 32> postOrder(Function &F) {
 
         // Find the first block in the current SCC to have a predecessor
         // in the remaining blocks. This becomes the starting block for the DFS
-        // Exception: SCC size = 1.
+        // Exception: SCC size = 1. We rely on the fact that the ordering of  
+        // predecessors is deterministic.
 
         BasicBlock *Start = nullptr;
 
@@ -200,10 +201,14 @@ AuxGraph::getSegmentMap() {
 }
 
 /// Get weight for a specific edge.
-APInt AuxGraph::getEdgeWeight(const EdgePtr &Ptr) { return Weights[Ptr]; }
+APInt AuxGraph::getEdgeWeight(const EdgePtr &Ptr) { 
+    return Weights[Ptr]; 
+}
 
 /// Return the successors edges of a basicblock from the Auxiliary Graph.
-SmallVector<EdgePtr, 4> AuxGraph::succs(BasicBlock *B) { return EdgeList[B]; }
+SmallVector<EdgePtr, 4> AuxGraph::succs(BasicBlock *B) { 
+    return EdgeList[B]; 
+}
 
 /// Print out the AuxGraph in Graphviz format. Defaults to printing to
 /// llvm::errs()
