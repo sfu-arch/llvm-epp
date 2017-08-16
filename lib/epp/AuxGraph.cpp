@@ -116,31 +116,50 @@ void AuxGraph::printWeights() {
     }
 }
 
+
 /// Construct the auxiliary graph representation from the original
 /// function control flow graph. At this stage the CFG and the
 /// AuxGraph are the same graph.
 void AuxGraph::init(Function &F) {
     Nodes = postOrder(F);
+    SmallVector<BasicBlock*, 4> Leaves;
     for (auto &BB : Nodes) {
-        for (auto S = succ_begin(BB), E = succ_end(BB); S != E; S++) {
-            add(BB, *S);
+        if(BB->getTerminator()->getNumSuccessors() > 0) {
+            for (auto S = succ_begin(BB), E = succ_end(BB); S != E; S++) {
+                add(BB, *S);
+            }
+        } else {
+            Leaves.push_back(BB);
         }
     }
 
-    /// Special case when there is only 1 basic block in the function
-    if (Nodes.size() == 1) {
-        auto *src = Nodes.front();
-        EdgeList.insert({src, SmallVector<EdgePtr, 4>()});
+    // Create a dummy basic block to represent the fake exit
+    FakeExit = BasicBlock::Create(F.getContext(), "fake.exit");
+
+
+    // For each leaf (block with no successor in the original CFG), add
+    // an edge from it to the fake exit. So the only block with no successor
+    // is the fake exit block wrt to the AuxGraph.
+    for(auto &L : Leaves) {
+        add(L, FakeExit, false);
     }
+
+    Nodes.insert(Nodes.begin(), FakeExit);
+
+    /// Special case when there is only 1 basic block in the function
+    /// if (Nodes.size() == 1) {
+    ///     auto *src = Nodes.front();
+    ///     EdgeList.insert({src, SmallVector<EdgePtr, 4>()});
+    /// }
 }
 
 /// Add a new edge to the edge list. This method is only used for
 /// adding real edges by the constructor.
-void AuxGraph::add(BasicBlock *src, BasicBlock *tgt) {
+void AuxGraph::add(BasicBlock *src, BasicBlock *tgt, bool isReal) {
     if (EdgeList.count(src) == 0) {
         EdgeList.insert({src, SmallVector<EdgePtr, 4>()});
     }
-    EdgeList[src].push_back(make_shared<Edge>(src, tgt));
+    EdgeList[src].push_back(make_shared<Edge>(src, tgt, isReal));
 }
 
 /// List of edges to be *segmented*. A segmented edge is an edge which
@@ -226,6 +245,26 @@ void AuxGraph::dot(raw_ostream &os = errs()) {
                 os << "color=\"red\",";
             //os << " label=\"" << Weights[L] << "\"];\n";
             os << " label=\"" << "\"];\n";
+        }
+    }
+    os << "}\n";
+}
+
+/// Print out the AuxGraph in Graphviz format. Defaults to printing to
+/// llvm::errs()
+void AuxGraph::dotW(raw_ostream &os = errs()) {
+    os << "digraph \"AuxGraph\" {\n label=\"AuxGraph\";\n";
+    for (auto &N : Nodes) {
+        os << "\tNode" << N << " [shape=record, label=\"" << N->getName().str()
+           << "\"];\n";
+    }
+    for (auto &EL : EdgeList) {
+        for (auto &L : EL.getSecond()) {
+            os << "\tNode" << EL.getFirst() << " -> Node" << L->tgt
+               << " [style=solid,";
+            if (!L->real)
+                os << "color=\"red\",";
+            os << " label=\"" << Weights[L] << "\"];\n";
         }
     }
     os << "}\n";

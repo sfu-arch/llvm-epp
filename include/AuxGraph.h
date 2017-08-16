@@ -33,12 +33,14 @@ class AuxGraph {
     DenseMap<const BasicBlock *, SmallVector<EdgePtr, 4>> EdgeList;
     std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>> SegmentMap;
     std::unordered_map<EdgePtr, APInt> Weights;
+    BasicBlock *FakeExit;
 
   public:
     void clear();
     void init(Function &F);
     void dot(raw_ostream &os);
-    void add(BasicBlock *src, BasicBlock *tgt);
+    void dotW(raw_ostream &os);
+    void add(BasicBlock *src, BasicBlock *tgt, bool isReal = true);
     void
     segment(SetVector<std::pair<const BasicBlock *, const BasicBlock *>> &List);
     void printWeights();
@@ -46,7 +48,7 @@ class AuxGraph {
     SmallVector<std::pair<EdgePtr, APInt>, 16> getWeights();
     APInt getEdgeWeight(const EdgePtr &Ptr);
     std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>> getSegmentMap();
-
+    bool isExitBlock(BasicBlock *B) { return B == FakeExit; }
     SmallVector<BasicBlock *, 32> nodes() { return Nodes; }
     APInt &operator[](const EdgePtr &E) { return Weights[E]; }
 };

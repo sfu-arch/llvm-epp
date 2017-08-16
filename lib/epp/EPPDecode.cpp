@@ -20,11 +20,12 @@ using namespace std;
 
 namespace {
 
-inline bool isExitBlock(BasicBlock *BB) {
-    if (BB->getTerminator()->getNumSuccessors() == 0)
-        return true;
-    return false;
-}
+// inline bool isExitBlock(BasicBlock *BB) {
+//     if (BB->getTerminator()->getNumSuccessors() == 0)
+//         return true;
+//     return false;
+// }
+
 }
 
 bool EPPDecode::doInitialization(Module &M) {
@@ -57,7 +58,7 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &E) {
     vector<EdgePtr> SelectedEdges;
     while (true) {
         Sequence.push_back(Position);
-        if (isExitBlock(Position))
+        if (AG.isExitBlock(Position))
             break;
         APInt Wt(64, 0, true);
         EdgePtr Select = nullptr;
