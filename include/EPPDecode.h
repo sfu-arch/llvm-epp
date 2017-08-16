@@ -43,7 +43,7 @@ struct EPPDecode : public llvm::ModulePass {
     std::pair<PathType, std::vector<llvm::BasicBlock *>>
     decode(llvm::Function &F, llvm::APInt pathID, EPPEncode &E);
 
-    const char *getPassName() const override { return "EPPDecode"; }
+    llvm::StringRef getPassName() const override { return "EPPDecode"; }
 };
 }
 

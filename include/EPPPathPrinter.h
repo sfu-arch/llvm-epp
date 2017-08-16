@@ -25,7 +25,7 @@ struct EPPPathPrinter : public llvm::ModulePass {
 
     virtual bool runOnModule(llvm::Module &m) override;
     bool doInitialization(llvm::Module &m) override;
-    const char *getPassName() const override { return "EPPPathPrinter"; }
+    llvm::StringRef getPassName() const override { return "EPPPathPrinter"; }
 };
 }
 

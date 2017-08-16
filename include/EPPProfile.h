@@ -27,7 +27,7 @@ struct EPPProfile : public llvm::ModulePass {
 
     bool doInitialization(llvm::Module &m) override;
     bool doFinalization(llvm::Module &m) override;
-    const char *getPassName() const override { return "EPPProfile"; }
+    llvm::StringRef getPassName() const override { return "EPPProfile"; }
 };
 }
 

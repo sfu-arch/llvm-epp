@@ -11,7 +11,7 @@ struct BreakSelfLoopsPass : public ModulePass {
     static char ID;
     BreakSelfLoopsPass() : llvm::ModulePass(ID){}
     virtual bool runOnModule(llvm::Module &m) override;
-    const char *getPassName() const override { return "BreakSelfLoopsPass"; }
+    llvm::StringRef getPassName() const override { return "BreakSelfLoopsPass"; }
 };
 
 }

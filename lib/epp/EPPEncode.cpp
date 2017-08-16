@@ -38,7 +38,7 @@ namespace {
 
 void printCFG(Function &F) {
     legacy::FunctionPassManager FPM(F.getParent());
-    FPM.add(llvm::createCFGPrinterPass());
+    FPM.add(llvm::createCFGPrinterLegacyPassPass());
     FPM.doInitialization();
     FPM.run(F);
     FPM.doFinalization();

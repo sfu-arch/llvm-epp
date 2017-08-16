@@ -9,7 +9,7 @@ set(PACKAGE_BUGREPORT "ska124@sfu.ca")
 # LLVM 3.8 downloaded from the releases page is built using the older version
 # of the CXX ABI, here we disable it. When we use a newer version this option
 # will be removed.
-set(CMAKE_CXX_FLAGS "-fno-rtti -D_GLIBCXX_USE_CXX11_ABI=0 -std=c++1y -Werror -Wno-deprecated-declarations")
+set(CMAKE_CXX_FLAGS "-fno-rtti -std=c++1y -Werror -Wno-deprecated-declarations")
 
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)

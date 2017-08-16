@@ -7,8 +7,8 @@ This tool is still in alpha and under active development.
 
 ## Requires 
 
-1. LLVM 3.8
-2. gcc-5
+1. LLVM 4.0
+2. gcc-5+
 
 ## Build 
 

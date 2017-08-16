@@ -42,7 +42,7 @@ flags = [
     '-D__STDC_LIMIT_MACROS',
     '-Depp_rt_agg_EXPORTS',
     '-Depp_rt_rle_EXPORTS',
-    '-I/home/ska124/ModuleInstall/llvm-3.8.1/include',
+    '-I/home/ska124/ModuleInstall/llvm-4.0/include',
     '-I/home/ska124/Repos/epp/include',
     '-Werror',
     '-Wno-deprecated-declarations',
