@@ -210,12 +210,13 @@ bool EPPProfile::runOnModule(Module &Mod) {
 
         auto &Enc     = getAnalysis<EPPEncode>(F);
         auto NumPaths = Enc.numPaths[&F.getEntryBlock()];
+
+        errs() << "- name: " << F.getName() << "\n";
+        errs() << "  num_paths: " << NumPaths << "\n";
         // Check if integer overflow occurred during path enumeration,
         // if it did then the entry block numpaths is set to zero.
         if (NumPaths.ne(APInt(64, 0, true))) {
             instrument(F, Enc);
-            errs() << "- name: " << F.getName() << "\n";
-            errs() << "  num_paths: " << NumPaths << "\n";
             errs() << "  num_inst_inc: " << NumInstInc << "\n";
             errs() << "  num_inst_log: " << NumInstLog << "\n";
         }

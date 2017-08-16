@@ -176,9 +176,6 @@ getBackEdges(BasicBlock *StartBB) {
 void EPPEncode::encode(Function &F) {
     DEBUG(errs() << "Called Encode on " << F.getName() << "\n");
 
-    // DEBUG
-    //printCFG(F);
-
     AG.init(F);
 
     auto *Entry    = &F.getEntryBlock();
@@ -195,17 +192,17 @@ void EPPEncode::encode(Function &F) {
         }
     }
 
-    error_code EC1;
-    raw_fd_ostream out1("auxgraph-1.dot", EC1, sys::fs::F_Text);
-    AG.dot(out1);
-    out1.close();
+    // error_code EC1;
+    // raw_fd_ostream out1("auxgraph-1.dot", EC1, sys::fs::F_Text);
+    // AG.dot(out1);
+    // out1.close();
 
     AG.segment(SegmentEdges);
 
-    error_code EC2;
-    raw_fd_ostream out2("auxgraph-2.dot", EC2, sys::fs::F_Text);
-    AG.dot(out2);
-    out2.close();
+    // error_code EC2;
+    // raw_fd_ostream out2("auxgraph-2.dot", EC2, sys::fs::F_Text);
+    // AG.dot(out2);
+    // out2.close();
 
     for (auto &B : AG.nodes()) {
         APInt pathCount(64, 0, true);
@@ -242,10 +239,10 @@ void EPPEncode::encode(Function &F) {
     }
 
 
-    error_code EC3;
-    raw_fd_ostream out3("auxgraph-3.dot", EC3, sys::fs::F_Text);
-    AG.dotW(out3);
-    out3.close();
+    // error_code EC3;
+    // raw_fd_ostream out3("auxgraph-3.dot", EC3, sys::fs::F_Text);
+    // AG.dotW(out3);
+    // out3.close();
 }
 
 char EPPEncode::ID = 0;
