@@ -5,17 +5,17 @@
 #include "llvm/ADT/SetVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/CFG.h"
+#include "llvm/Analysis/CFGPrinter.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/IR/LegacyPassManager.h"
-#include "llvm/Analysis/CFGPrinter.h"
 
 #include "AuxGraph.h"
 #include "EPPEncode.h"
@@ -30,6 +30,7 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
+extern cl::opt<bool> dumpGraphs;
 
 bool EPPEncode::doInitialization(Module &m) { return false; }
 bool EPPEncode::doFinalization(Module &m) { return false; }
@@ -44,15 +45,12 @@ void printCFG(Function &F) {
     FPM.doFinalization();
 }
 
-// bool isFunctionExiting(BasicBlock *BB) {
-//     if (BB->getTerminator()->getNumSuccessors() == 0) {
-//         //errs() << BB->getName() << " is an exit block\n";
-//         return true;
-//     }
-// 
-//     return false;
-// }
-
+void dumpDotGraph(StringRef filename, const AuxGraph &AG) {
+    error_code EC;
+    raw_fd_ostream out(filename, EC, sys::fs::F_Text);
+    AG.dot(out);
+    out.close();
+}
 }
 
 bool EPPEncode::runOnFunction(Function &F) {
@@ -192,17 +190,15 @@ void EPPEncode::encode(Function &F) {
         }
     }
 
-    // error_code EC1;
-    // raw_fd_ostream out1("auxgraph-1.dot", EC1, sys::fs::F_Text);
-    // AG.dot(out1);
-    // out1.close();
+    if (dumpGraphs) {
+        dumpDotGraph("auxgraph-1.dot", AG);
+    }
 
     AG.segment(SegmentEdges);
 
-    // error_code EC2;
-    // raw_fd_ostream out2("auxgraph-2.dot", EC2, sys::fs::F_Text);
-    // AG.dot(out2);
-    // out2.close();
+    if (dumpGraphs) {
+        dumpDotGraph("auxgraph-2.dot", AG);
+    }
 
     for (auto &B : AG.nodes()) {
         APInt pathCount(64, 0, true);
@@ -210,8 +206,9 @@ void EPPEncode::encode(Function &F) {
         auto Succs = AG.succs(B);
         if (Succs.empty()) {
             pathCount = 1;
-            assert(B->getName().startswith("fake.exit") && 
-                    "The only block without a successor should be the fake exit");
+            assert(
+                B->getName().startswith("fake.exit") &&
+                "The only block without a successor should be the fake exit");
         } else {
             for (auto &SE : Succs) {
                 AG[SE]  = pathCount;
@@ -222,14 +219,16 @@ void EPPEncode::encode(Function &F) {
                 // This is the only place we need to check for overflow.
                 // If there is an overflow, indicate this by saving 0 as the
                 // number of paths from the entry block. This is impossible for
-                // a regular CFG where the numpaths from entry would atleast be 1
+                // a regular CFG where the numpaths from entry would atleast be
+                // 1
                 // if the entry block is also the exit block.
                 bool Ov   = false;
                 pathCount = pathCount.sadd_ov(numPaths[S], Ov);
                 if (Ov) {
                     numPaths.clear();
                     numPaths.insert(make_pair(Entry, APInt(64, 0, true)));
-                    DEBUG(errs() << "Integer Overflow in function " << F.getName());
+                    DEBUG(errs()
+                          << "Integer Overflow in function " << F.getName());
                     return;
                 }
             }
@@ -238,11 +237,9 @@ void EPPEncode::encode(Function &F) {
         numPaths.insert({B, pathCount});
     }
 
-
-    // error_code EC3;
-    // raw_fd_ostream out3("auxgraph-3.dot", EC3, sys::fs::F_Text);
-    // AG.dotW(out3);
-    // out3.close();
+    if (dumpGraphs) {
+        dumpDotGraph("auxgraph-3.dot", AG);
+    }
 }
 
 char EPPEncode::ID = 0;

@@ -38,18 +38,21 @@ class AuxGraph {
   public:
     void clear();
     void init(Function &F);
-    void dot(raw_ostream &os);
-    void dotW(raw_ostream &os);
-    void add(BasicBlock *src, BasicBlock *tgt, bool isReal = true);
+    EdgePtr add(BasicBlock *src, BasicBlock *tgt, bool isReal = true);
     void
     segment(SetVector<std::pair<const BasicBlock *, const BasicBlock *>> &List);
-    void printWeights();
-    SmallVector<EdgePtr, 4> succs(BasicBlock *B);
-    SmallVector<std::pair<EdgePtr, APInt>, 16> getWeights();
-    APInt getEdgeWeight(const EdgePtr &Ptr);
-    std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>> getSegmentMap();
-    bool isExitBlock(BasicBlock *B) { return B == FakeExit; }
-    SmallVector<BasicBlock *, 32> nodes() { return Nodes; }
+    //void printWeights();
+    void dot(raw_ostream &os) const;
+    void dotW(raw_ostream &os) const;
+    SmallVector<EdgePtr, 4> succs(BasicBlock *B) const;
+    SmallVector<std::pair<EdgePtr, APInt>, 16> getWeights() const;
+    APInt getEdgeWeight(const EdgePtr &Ptr) const;
+    std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>> getSegmentMap() const;
+    EdgePtr exists(BasicBlock *Src, BasicBlock *Tgt, bool isReal) const;
+    EdgePtr getOrInsertEdge(BasicBlock *Src, BasicBlock *Tgt, bool isReal);
+
+    bool isExitBlock(BasicBlock *B) const { return B == FakeExit; }
+    SmallVector<BasicBlock *, 32> nodes() const { return Nodes; }
     APInt &operator[](const EdgePtr &E) { return Weights[E]; }
 };
 }

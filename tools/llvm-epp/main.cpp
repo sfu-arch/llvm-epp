@@ -6,8 +6,8 @@
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/AsmParser/Parser.h"
-#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/Bitcode/BitcodeReader.h"
+#include "llvm/Bitcode/BitcodeWriter.h"
 #include "llvm/CodeGen/LinkAllAsmWriterComponents.h"
 #include "llvm/CodeGen/LinkAllCodegenComponents.h"
 #include "llvm/IR/DataLayout.h"
@@ -17,7 +17,6 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 #include "llvm/IRReader/IRReader.h"
-#include "llvm/Linker/Linker.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/MC/SubtargetFeature.h"
 #include "llvm/Pass.h"
@@ -46,10 +45,10 @@
 #include <memory>
 #include <string>
 
+#include "BreakSelfLoopsPass.h"
 #include "EPPPathPrinter.h"
 #include "EPPProfile.h"
 #include "SplitLandingPadPredsPass.h"
-#include "BreakSelfLoopsPass.h"
 
 using namespace std;
 using namespace llvm;
@@ -78,6 +77,11 @@ cl::opt<bool> stripDebug(
     cl::value_desc("toggle"), cl::Hidden, cl::init(true),
     cl::cat(LLVMEppOptionCategory));
 
+cl::opt<bool> dumpGraphs("d",
+                         cl::desc("Dump dot graphs of the different stages."),
+                         cl::value_desc("toggle"), cl::Hidden, cl::init(false),
+                         cl::cat(LLVMEppOptionCategory));
+
 // cl::opt<bool> wideCounter(
 //     "w",
 //     cl::desc("Use wide (128 bit) counters. Only available on 64 bit
@@ -102,10 +106,7 @@ void instrumentModule(Module &module) {
 
     // Build up all of the passes that we want to run on the module.
     legacy::PassManager pm;
-    // pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
-    // pm.add(llvm::createBasicAAWrapperPass());
-    // pm.add(createTypeBasedAAWrapperPass());
     pm.add(new epp::BreakSelfLoopsPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::SplitLandingPadPredsPass());
@@ -135,10 +136,7 @@ void instrumentModule(Module &module) {
 
 void interpretResults(Module &module, std::string filename) {
     legacy::PassManager pm;
-    // pm.add(new llvm::AssumptionCacheTracker());
     pm.add(createLoopSimplifyPass());
-    // pm.add(createBasicAAWrapperPass());
-    // pm.add(createTypeBasedAAWrapperPass());
     pm.add(new epp::BreakSelfLoopsPass());
     pm.add(createBreakCriticalEdgesPass());
     pm.add(new epp::SplitLandingPadPredsPass());

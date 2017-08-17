@@ -67,7 +67,7 @@ bool EPPPathPrinter::runOnModule(Module &M) {
 
             // If no paths have been executed for this function,
             // then skip it altogether. A continue over here is fine,
-            // since there are no lines for the paths themselves and 
+            // since there are no lines for the paths themselves and
             // the next line we expect is for one FunctionId and NumberOfPaths.
 
             if (NumberOfPaths == 0)
@@ -80,7 +80,6 @@ bool EPPPathPrinter::runOnModule(Module &M) {
             vector<Path> Paths;
             for (uint32_t I = 0; I < NumberOfPaths; I++) {
                 getline(InFile, Line);
-
 
                 stringstream SS(Line);
                 string PathIdStr;

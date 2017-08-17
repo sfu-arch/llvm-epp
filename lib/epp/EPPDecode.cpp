@@ -25,7 +25,6 @@ namespace {
 //         return true;
 //     return false;
 // }
-
 }
 
 bool EPPDecode::doInitialization(Module &M) {
@@ -66,8 +65,8 @@ EPPDecode::decode(Function &F, APInt pathID, EPPEncode &E) {
         for (auto &Edge : AG.succs(Position)) {
             auto EWt = AG.getEdgeWeight(Edge);
             if (EWt.uge(Wt) && EWt.ule(pathID)) {
-                DEBUG(errs() << "\t" << Edge->tgt->getName() << " [" << EWt
-                             << "]\n");
+                DEBUG(errs()
+                      << "\t" << Edge->tgt->getName() << " [" << EWt << "]\n");
                 Select = Edge;
                 Wt     = EWt;
             }

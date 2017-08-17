@@ -68,7 +68,7 @@ SmallVector<BasicBlock *, 32> postOrder(Function &F) {
 
         // Find the first block in the current SCC to have a predecessor
         // in the remaining blocks. This becomes the starting block for the DFS
-        // Exception: SCC size = 1. We rely on the fact that the ordering of  
+        // Exception: SCC size = 1. We rely on the fact that the ordering of
         // predecessors is deterministic.
 
         BasicBlock *Start = nullptr;
@@ -109,22 +109,21 @@ SmallVector<BasicBlock *, 32> postOrder(Function &F) {
 }
 }
 
-void AuxGraph::printWeights() {
-    for (auto &V : Weights) {
-        errs() << V.first->src->getName() << "-" << V.first->tgt->getName()
-               << ": " << V.second << "\n";
-    }
-}
-
+// void AuxGraph::printWeights() {
+//     for (auto &V : Weights) {
+//         errs() << V.first->src->getName() << "-" << V.first->tgt->getName()
+//                << ": " << V.second << "\n";
+//     }
+// }
 
 /// Construct the auxiliary graph representation from the original
 /// function control flow graph. At this stage the CFG and the
 /// AuxGraph are the same graph.
 void AuxGraph::init(Function &F) {
     Nodes = postOrder(F);
-    SmallVector<BasicBlock*, 4> Leaves;
+    SmallVector<BasicBlock *, 4> Leaves;
     for (auto &BB : Nodes) {
-        if(BB->getTerminator()->getNumSuccessors() > 0) {
+        if (BB->getTerminator()->getNumSuccessors() > 0) {
             for (auto S = succ_begin(BB), E = succ_end(BB); S != E; S++) {
                 add(BB, *S);
             }
@@ -136,11 +135,10 @@ void AuxGraph::init(Function &F) {
     // Create a dummy basic block to represent the fake exit
     FakeExit = BasicBlock::Create(F.getContext(), "fake.exit");
 
-
     // For each leaf (block with no successor in the original CFG), add
     // an edge from it to the fake exit. So the only block with no successor
     // is the fake exit block wrt to the AuxGraph.
-    for(auto &L : Leaves) {
+    for (auto &L : Leaves) {
         add(L, FakeExit, false);
     }
 
@@ -155,11 +153,30 @@ void AuxGraph::init(Function &F) {
 
 /// Add a new edge to the edge list. This method is only used for
 /// adding real edges by the constructor.
-void AuxGraph::add(BasicBlock *src, BasicBlock *tgt, bool isReal) {
+EdgePtr AuxGraph::add(BasicBlock *src, BasicBlock *tgt, bool isReal) {
     if (EdgeList.count(src) == 0) {
         EdgeList.insert({src, SmallVector<EdgePtr, 4>()});
     }
-    EdgeList[src].push_back(make_shared<Edge>(src, tgt, isReal));
+    auto E = make_shared<Edge>(src, tgt, isReal);
+    EdgeList[src].push_back(E);
+    return E;
+}
+
+EdgePtr AuxGraph::exists(BasicBlock *Src, BasicBlock *Tgt, bool isReal) const {
+    for (auto &SE : succs(Src)) {
+        if (SE->tgt == Tgt && SE->real == isReal) {
+            return SE;
+        }
+    }
+    return nullptr;
+}
+
+EdgePtr AuxGraph::getOrInsertEdge(BasicBlock *Src, BasicBlock *Tgt,
+                                  bool isReal) {
+    if (auto E = exists(Src, Tgt, isReal)) {
+        return E;
+    }
+    return add(Src, Tgt, isReal);
 }
 
 /// List of edges to be *segmented*. A segmented edge is an edge which
@@ -204,7 +221,7 @@ void AuxGraph::segment(
 }
 
 /// Get all non-zero weights for non-segmented edges.
-SmallVector<pair<EdgePtr, APInt>, 16> AuxGraph::getWeights() {
+SmallVector<pair<EdgePtr, APInt>, 16> AuxGraph::getWeights() const {
     SmallVector<pair<EdgePtr, APInt>, 16> Result;
     copy_if(Weights.begin(), Weights.end(), back_inserter(Result),
             [](const pair<EdgePtr, APInt> &V) {
@@ -215,23 +232,23 @@ SmallVector<pair<EdgePtr, APInt>, 16> AuxGraph::getWeights() {
 
 /// Get the segment mapping
 std::unordered_map<EdgePtr, std::pair<EdgePtr, EdgePtr>>
-AuxGraph::getSegmentMap() {
+AuxGraph::getSegmentMap() const {
     return SegmentMap;
 }
 
 /// Get weight for a specific edge.
-APInt AuxGraph::getEdgeWeight(const EdgePtr &Ptr) { 
-    return Weights[Ptr]; 
+APInt AuxGraph::getEdgeWeight(const EdgePtr &Ptr) const {
+    return Weights.at(Ptr);
 }
 
 /// Return the successors edges of a basicblock from the Auxiliary Graph.
-SmallVector<EdgePtr, 4> AuxGraph::succs(BasicBlock *B) { 
-    return EdgeList[B]; 
+SmallVector<EdgePtr, 4> AuxGraph::succs(BasicBlock *B) const {
+    return EdgeList.lookup(B);
 }
 
 /// Print out the AuxGraph in Graphviz format. Defaults to printing to
 /// llvm::errs()
-void AuxGraph::dot(raw_ostream &os = errs()) {
+void AuxGraph::dot(raw_ostream &os = errs()) const {
     os << "digraph \"AuxGraph\" {\n label=\"AuxGraph\";\n";
     for (auto &N : Nodes) {
         os << "\tNode" << N << " [shape=record, label=\"" << N->getName().str()
@@ -243,8 +260,9 @@ void AuxGraph::dot(raw_ostream &os = errs()) {
                << " [style=solid,";
             if (!L->real)
                 os << "color=\"red\",";
-            //os << " label=\"" << Weights[L] << "\"];\n";
-            os << " label=\"" << "\"];\n";
+            // os << " label=\"" << Weights[L] << "\"];\n";
+            os << " label=\""
+               << "\"];\n";
         }
     }
     os << "}\n";
@@ -252,7 +270,7 @@ void AuxGraph::dot(raw_ostream &os = errs()) {
 
 /// Print out the AuxGraph in Graphviz format. Defaults to printing to
 /// llvm::errs()
-void AuxGraph::dotW(raw_ostream &os = errs()) {
+void AuxGraph::dotW(raw_ostream &os = errs()) const {
     os << "digraph \"AuxGraph\" {\n label=\"AuxGraph\";\n";
     for (auto &N : Nodes) {
         os << "\tNode" << N << " [shape=record, label=\"" << N->getName().str()
@@ -264,7 +282,7 @@ void AuxGraph::dotW(raw_ostream &os = errs()) {
                << " [style=solid,";
             if (!L->real)
                 os << "color=\"red\",";
-            os << " label=\"" << Weights[L] << "\"];\n";
+            os << " label=\"" << Weights.at(L) << "\"];\n";
         }
     }
     os << "}\n";

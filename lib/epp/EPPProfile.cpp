@@ -30,7 +30,6 @@ using namespace llvm;
 using namespace epp;
 using namespace std;
 
-
 extern cl::opt<string> profileOutputFilename;
 
 bool EPPProfile::doInitialization(Module &M) {
@@ -46,7 +45,7 @@ bool EPPProfile::doFinalization(Module &M) { return false; }
 
 namespace {
 
-uint64_t NumInstInc = 0; 
+uint64_t NumInstInc = 0;
 uint64_t NumInstLog = 0;
 
 void saveModule(Module &m, StringRef filename) {
@@ -75,12 +74,10 @@ void insertInc(BasicBlock *Block, APInt Inc, AllocaInst *Ctr) {
         //(errs() << "Inserting Increment " << Increment << " "
         //<< addPos->getParent()->getName() << "\n");
         auto *addPos = &*Block->getFirstInsertionPt();
-        auto *LI = new LoadInst(Ctr, "ld.epp.ctr", addPos);
+        auto *LI     = new LoadInst(Ctr, "ld.epp.ctr", addPos);
 
-        Constant *CI = nullptr;
-        // auto I64     = APInt(64, Increment.getLimitedValue(), true);
-        CI = ConstantInt::getIntegerValue(Ctr->getAllocatedType(), Inc);
-
+        Constant *CI =
+            ConstantInt::getIntegerValue(Ctr->getAllocatedType(), Inc);
         auto *BI = BinaryOperator::CreateAdd(LI, CI);
         BI->insertAfter(LI);
         (new StoreInst(BI, Ctr))->insertAfter(BI);
@@ -148,7 +145,7 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
 
     // We insert the logging function as the first thing in the basic block
     // as we know for sure that there is no other instrumentation present in
-    // this basic block. 
+    // this basic block.
     Instruction *logPos = &*BB->getFirstInsertionPt();
 
     auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
@@ -159,7 +156,6 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
 
     ++NumInstLog;
 }
-
 }
 
 void EPPProfile::addCtorsAndDtors(Module &Mod) {
@@ -193,8 +189,9 @@ void EPPProfile::addCtorsAndDtors(Module &Mod) {
         cast<Function>(Mod.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
     auto *DtorBB = BasicBlock::Create(Ctx, "entry", EPPSaveDtor);
     IRBuilder<> Builder(DtorBB);
-    Builder.CreateCall(EPPSave, {Builder.CreateGlobalStringPtr(
-                                    profileOutputFilename.getValue())});
+    Builder.CreateCall(
+        EPPSave,
+        {Builder.CreateGlobalStringPtr(profileOutputFilename.getValue())});
     Builder.CreateRet(nullptr);
 
     appendToGlobalDtors(Mod, cast<Function>(EPPSaveDtor), 0);
@@ -228,37 +225,35 @@ bool EPPProfile::runOnModule(Module &Mod) {
     return true;
 }
 
-
-/// This routine inserts two types of instrumentation. 
+/// This routine inserts two types of instrumentation.
 /// 1. Incrementing a counter along a set of edges
 /// 2. Logging the value of the counter at certain blocks.
 /// For 1) The counter is incremented by splitting an existing
 /// edge in the CFG. This implies a new basic block is inserted
-/// between two basic blocks and the instrumentation is inserted 
+/// between two basic blocks and the instrumentation is inserted
 /// into the new block.
-/// For 2) The counter value is saved by the runtim at certain 
+/// For 2) The counter value is saved by the runtim at certain
 /// basic blocks. This is performed by the insertion of function
-/// call to the logging runtime function. 
-/// Goals: 
-/// 1) Splitting edges should insert *new* blocks inside them so 
-/// that the Graph structure which maintains the edge weights does 
+/// call to the logging runtime function.
+/// Goals:
+/// 1) Splitting edges should insert *new* blocks inside them so
+/// that the Graph structure which maintains the edge weights does
 /// not need to be updated at runtime.
 /// 2) Instrumentation is always inserted at the BB's first insertion pt.
 /// 3) There is an ordering on the the instrumentation insertion.
 ///   - splitting edges
 ///   - leaf log function calls
-///   - counter allocation 
+///   - counter allocation
 void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     NumInstInc = 0, NumInstLog = 0;
 
-    Module *M = F.getParent();
-    auto &Ctx = M->getContext();
-
+    Module *M       = F.getParent();
+    auto &Ctx       = M->getContext();
     uint64_t FuncId = FunctionIds[&F];
 
-    // Allocate a counter but dont insert it just yet. We want the 
-    // counter to be the last thing to insert in the function so that 
-    // it always dominates the log function call -- eg. when there is 
+    // Allocate a counter but dont insert it just yet. We want the
+    // counter to be the last thing to insert in the function so that
+    // it always dominates the log function call -- eg. when there is
     // only 1 basic block in the function.
     Type *CtrTy   = Type::getInt64Ty(Ctx);
     Constant *Zap = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
@@ -292,7 +287,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
 
         BasicBlock *N = interpose(Src, Tgt);
 
-        // Since we always add instrumentation 
+        // Since we always add instrumentation
         insertInc(N, Post, Ctr);
         insertLogPath(N, FuncId, Ctr, Zap);
         insertInc(N, Pre, Ctr);
@@ -304,7 +299,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
         insertLogPath(EB, FuncId, Ctr, Zap);
     }
 
-    // Add the counter as the first instruction in the entry 
+    // Add the counter as the first instruction in the entry
     // block of the function. Set the counter to zero.
     Ctr->insertBefore(&*F.getEntryBlock().getFirstInsertionPt());
     auto *SI = new StoreInst(Zap, Ctr);
