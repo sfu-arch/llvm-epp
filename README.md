@@ -1,13 +1,9 @@
 ## llvm-epp 
 Efficient Path Profiling using LLVM 
 
-[![Build Status](https://travis-ci.org/sfu-arch/llvm-epp.svg?branch=master)](https://travis-ci.org/sfu-arch/llvm-epp)
-
-[Updates here](https://github.com/snehasish/llvm-epp).
-
 ## Requires 
 
-1. LLVM 4.0
+1. LLVM 5.0
 2. gcc-5+
 
 ## Build 

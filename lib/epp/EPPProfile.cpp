@@ -133,7 +133,8 @@ BasicBlock *interpose(BasicBlock *BB, BasicBlock *Succ,
 void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
                    Constant *Zap) {
 
-    // errs() << "Inserting Log: " << BB->getName() << "\n";
+    //errs() << "Inserting Log: " << BB->getName() << "\n";
+    //errs() << *BB << "\n";
 
     Module *M    = BB->getModule();
     auto &Ctx    = M->getContext();
@@ -141,21 +142,23 @@ void insertLogPath(BasicBlock *BB, uint64_t FuncId, AllocaInst *Ctr,
     auto *CtrTy  = Ctr->getAllocatedType();
     auto *FIdArg = ConstantInt::getIntegerValue(CtrTy, APInt(64, FuncId, true));
     Function *logFun2 = cast<Function>(
-        M->getOrInsertFunction("__epp_logPath", voidTy, CtrTy, CtrTy, nullptr));
+        M->getOrInsertFunction("__epp_logPath", voidTy, CtrTy, CtrTy));
+
 
     // We insert the logging function as the first thing in the basic block
     // as we know for sure that there is no other instrumentation present in
     // this basic block.
     Instruction *logPos = &*BB->getFirstInsertionPt();
-
     auto *LI               = new LoadInst(Ctr, "ld.epp.ctr", logPos);
     vector<Value *> Params = {LI, FIdArg};
     auto *CI               = CallInst::Create(logFun2, Params, "");
     CI->insertAfter(LI);
     (new StoreInst(Zap, Ctr))->insertAfter(CI);
 
+
     ++NumInstLog;
 }
+
 }
 
 void EPPProfile::addCtorsAndDtors(Module &Mod) {
@@ -166,13 +169,13 @@ void EPPProfile::addCtorsAndDtors(Module &Mod) {
     uint32_t NumberOfFunctions = FunctionIds.size();
 
     auto *EPPInit = cast<Function>(
-        Mod.getOrInsertFunction("__epp_init", voidTy, int32Ty, nullptr));
+        Mod.getOrInsertFunction("__epp_init", voidTy, int32Ty));
     auto *EPPSave = cast<Function>(
-        Mod.getOrInsertFunction("__epp_save", voidTy, int8PtrTy, nullptr));
+        Mod.getOrInsertFunction("__epp_save", voidTy, int8PtrTy));
 
     // Add Global Constructor for initializing path profiling
     auto *EPPInitCtor =
-        cast<Function>(Mod.getOrInsertFunction("__epp_ctor", voidTy, nullptr));
+        cast<Function>(Mod.getOrInsertFunction("__epp_ctor", voidTy));
     auto *CtorBB = BasicBlock::Create(Ctx, "entry", EPPInitCtor);
     auto *Arg    = ConstantInt::get(int32Ty, NumberOfFunctions, false);
     CallInst::Create(EPPInit, {Arg}, "", CtorBB);
@@ -186,7 +189,7 @@ void EPPProfile::addCtorsAndDtors(Module &Mod) {
 
     // Add global destructor to dump out results
     auto *EPPSaveDtor =
-        cast<Function>(Mod.getOrInsertFunction("__epp_dtor", voidTy, nullptr));
+        cast<Function>(Mod.getOrInsertFunction("__epp_dtor", voidTy));
     auto *DtorBB = BasicBlock::Create(Ctx, "entry", EPPSaveDtor);
     IRBuilder<> Builder(DtorBB);
     Builder.CreateCall(
@@ -250,6 +253,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     Module *M       = F.getParent();
     auto &Ctx       = M->getContext();
     uint64_t FuncId = FunctionIds[&F];
+    const DataLayout& DL = M->getDataLayout();
 
     // Allocate a counter but dont insert it just yet. We want the
     // counter to be the last thing to insert in the function so that
@@ -257,7 +261,7 @@ void EPPProfile::instrument(Function &F, EPPEncode &Enc) {
     // only 1 basic block in the function.
     Type *CtrTy   = Type::getInt64Ty(Ctx);
     Constant *Zap = ConstantInt::getIntegerValue(CtrTy, APInt(64, 0, true));
-    auto *Ctr     = new AllocaInst(CtrTy, nullptr, "epp.ctr");
+    auto *Ctr     = new AllocaInst(CtrTy, DL.getAllocaAddrSpace(), nullptr, "epp.ctr");
 
     auto ExitBlocks = getFunctionExitBlocks(F);
 
