@@ -35,4 +35,4 @@ int main()
 // RUN: clang -std=c++11 -v %t.epp.bc -o %t-exec -lepp-rt -lpthread -lstdc++ 2> %t.compile 
 // RUN: %t-exec > %t.log
 // RUN: llvm-epp -p=%t.profile %t.bc 2> %t.decode
-// RUN: diff -aub %t.profile %s.txt  
+// RUN: diff -aub <(head -n 30 %t.profile) <(head -n 30 %s.txt)
