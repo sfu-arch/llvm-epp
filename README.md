@@ -3,7 +3,7 @@ Efficient Path Profiling using LLVM
 
 [![Build Status](https://travis-ci.org/sfu-arch/llvm-epp.svg?branch=master)](https://travis-ci.org/sfu-arch/llvm-epp)
 
-This tool is still in alpha and under active development. 
+[Updates here](https://github.com/snehasish/llvm-epp).
 
 ## Requires 
 
